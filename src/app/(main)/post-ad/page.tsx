@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
 const CATEGORIES = [
   { name: 'Cars & Vehicles',       slug: 'cars-vehicles',       emoji: '🚗' },
@@ -17,51 +19,47 @@ const CATEGORIES = [
   { name: 'Other',                 slug: 'other',               emoji: '📦' },
 ]
 
-export default function PostAdPage() {
+export default async function PostAdPage() {
+  // Auth guard — redirect guests to login
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) redirect('/login?next=/post-ad')
+  } catch {
+    // Supabase not configured — allow through in dev/demo
+  }
+
   return (
     <div style={{ backgroundColor: '#f1f1f1', minHeight: '100vh' }}>
-      {/* Header bar */}
       <div className="bg-white border-b" style={{ borderColor: '#dbdadb' }}>
         <div className="max-w-3xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-extrabold" style={{ color: '#0D475C' }}>
-            Post a free ad
-          </h1>
+          <h1 className="text-xl font-extrabold" style={{ color: '#0D475C' }}>Post a free ad</h1>
           <p className="text-sm text-gray-400 mt-0.5">Choose a category to get started</p>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Progress */}
+        {/* Progress stepper */}
         <div className="flex items-center gap-2 mb-8">
-          {['Choose category', 'Ad details', 'Photos', 'Review'].map((step, i) => (
+          {['Choose category', 'Ad details', 'Photos', 'Review & post'].map((step, i) => (
             <div key={step} className="flex items-center gap-2">
               <div
-                className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
-                style={
-                  i === 0
-                    ? { backgroundColor: '#0D475C', color: '#fff' }
-                    : { backgroundColor: '#e8e8e8', color: '#aaa' }
-                }
+                className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0"
+                style={i === 0 ? { backgroundColor: '#0D475C', color: '#fff' } : { backgroundColor: '#e8e8e8', color: '#aaa' }}
               >
                 {i + 1}
               </div>
-              <span
-                className="text-xs font-medium hidden sm:block"
-                style={{ color: i === 0 ? '#0D475C' : '#aaa' }}
-              >
+              <span className="text-xs font-medium hidden sm:block" style={{ color: i === 0 ? '#0D475C' : '#aaa' }}>
                 {step}
               </span>
-              {i < 3 && <div className="w-6 h-px" style={{ backgroundColor: '#dbdadb' }} />}
+              {i < 3 && <div className="w-6 h-px flex-shrink-0" style={{ backgroundColor: '#dbdadb' }} />}
             </div>
           ))}
         </div>
 
-        {/* Category grid */}
         <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#dbdadb' }}>
           <div className="px-5 py-4 border-b" style={{ borderColor: '#f0f0f0' }}>
-            <h2 className="font-bold text-base" style={{ color: '#0D475C' }}>
-              What are you selling?
-            </h2>
+            <h2 className="font-bold text-base" style={{ color: '#0D475C' }}>What are you selling?</h2>
           </div>
           <div className="divide-y" style={{ borderColor: '#f0f0f0' }}>
             {CATEGORIES.map(cat => (

@@ -1,24 +1,49 @@
-"use client"
+'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
   { label: 'Cars & Vehicles', slug: 'cars-vehicles' },
-  { label: 'For Sale', slug: 'for-sale' },
-  { label: 'Services', slug: 'services' },
-  { label: 'Property', slug: 'property' },
-  { label: 'Pets', slug: 'pets' },
-  { label: 'Jobs', slug: 'jobs' },
-  { label: 'Community', slug: 'community' },
+  { label: 'For Sale',        slug: 'for-sale' },
+  { label: 'Services',        slug: 'services' },
+  { label: 'Property',        slug: 'property' },
+  { label: 'Pets',            slug: 'pets' },
+  { label: 'Jobs',            slug: 'jobs' },
+  { label: 'Community',       slug: 'community' },
 ]
 
-export default function Header() {
+interface HeaderUser {
+  id: string
+  email: string
+  name: string
+}
+
+interface HeaderProps {
+  user: HeaderUser | null
+}
+
+export default function Header({ user }: HeaderProps) {
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -28,21 +53,34 @@ export default function Header() {
     router.push(`/browse?${params.toString()}`)
   }
 
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    setDropdownOpen(false)
+    router.push('/')
+    router.refresh()
+  }
+
+  // For protected actions: redirects guest to login
+  function guardedHref(path: string) {
+    if (user) return path
+    return `/login?next=${encodeURIComponent(path)}`
+  }
+
+  const initials = user?.name?.slice(0, 2).toUpperCase() ?? ''
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
-      {/* Main header row */}
+      {/* ── Main row ── */}
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0 mr-2">
-          <span
-            className="text-2xl font-bold tracking-tight"
-            style={{ color: '#0D475C', fontFamily: "'Open Sans', sans-serif" }}
-          >
+          <span className="text-2xl font-extrabold tracking-tight" style={{ color: '#0D475C' }}>
             Gumtree
           </span>
         </Link>
 
-        {/* Search bar */}
+        {/* Search */}
         <form onSubmit={handleSearch} className="flex flex-1 max-w-2xl">
           <div
             className="flex flex-1 border-2 rounded-l-md overflow-hidden"
@@ -68,37 +106,108 @@ export default function Header() {
           </div>
           <button
             type="submit"
-            className="px-5 py-2 text-sm font-semibold text-white rounded-r-md transition-colors"
+            className="px-5 py-2 text-sm font-semibold text-white rounded-r-md transition-colors hover:opacity-90"
             style={{ backgroundColor: '#0D475C' }}
           >
             Search
           </button>
         </form>
 
-        {/* Auth + CTA */}
+        {/* Right nav */}
         <nav className="flex items-center gap-2 flex-shrink-0 ml-auto">
+          {/* Post an ad — requires auth */}
           <Link
-            href="/login"
-            className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded transition-colors hover:bg-gray-100"
-            style={{ color: '#0D475C' }}
-          >
-            Login
-          </Link>
-          <Link
-            href="/register"
-            className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded border transition-colors hover:bg-gray-50"
-            style={{ color: '#0D475C', borderColor: '#0D475C' }}
-          >
-            Sign up
-          </Link>
-          <Link
-            href="/post-ad"
+            href={guardedHref('/post-ad')}
             className="text-sm font-semibold px-4 py-2 rounded text-white transition-opacity hover:opacity-90 whitespace-nowrap"
             style={{ backgroundColor: '#e75462' }}
           >
             Post an ad
           </Link>
-          {/* Mobile menu toggle */}
+
+          {user ? (
+            /* ── Logged-in user dropdown ── */
+            <div className="relative hidden sm:block" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(o => !o)}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                  style={{ backgroundColor: '#0D475C' }}
+                >
+                  {initials}
+                </div>
+                <span className="text-sm font-medium max-w-[80px] truncate" style={{ color: '#0D475C' }}>
+                  {user.name}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className="transition-transform"
+                  style={{
+                    color: '#0D475C',
+                    transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)',
+                  }}
+                />
+              </button>
+
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border shadow-lg py-1 z-50"
+                  style={{ borderColor: '#dbdadb' }}
+                >
+                  <div className="px-4 py-2.5 border-b" style={{ borderColor: '#f0f0f0' }}>
+                    <p className="text-xs font-semibold text-gray-700 truncate">{user.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  {[
+                    { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText },
+                    { label: 'Watchlist', href: '/account/watchlist', Icon: Heart },
+                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle },
+                    { label: 'Profile',   href: '/account/profile',   Icon: Settings },
+                  ].map(({ label, href, Icon }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Icon size={14} className="text-gray-400" />
+                      {label}
+                    </Link>
+                  ))}
+                  <div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut size={14} />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Guest auth links ── */
+            <>
+              <Link
+                href="/login"
+                className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded transition-colors hover:bg-gray-100"
+                style={{ color: '#0D475C' }}
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded border transition-colors hover:bg-gray-50"
+                style={{ color: '#0D475C', borderColor: '#0D475C' }}
+              >
+                Sign up
+              </Link>
+            </>
+          )}
+
+          {/* Mobile hamburger */}
           <button
             className="sm:hidden p-2 rounded hover:bg-gray-100"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -113,7 +222,7 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Category nav */}
+      {/* ── Category nav bar ── */}
       <div className="border-t border-gray-200" style={{ backgroundColor: '#0D475C' }}>
         <div className="max-w-7xl mx-auto px-4 overflow-x-auto">
           <div className="flex whitespace-nowrap">
@@ -130,7 +239,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* ── Mobile menu ── */}
       {menuOpen && (
         <div className="sm:hidden bg-white border-t border-gray-200 px-4 py-3 space-y-2">
           {NAV_ITEMS.map(item => (
@@ -144,10 +253,23 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
-          <div className="flex gap-2 pt-2">
-            <Link href="/login" className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Login</Link>
-            <Link href="/register" className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Sign up</Link>
-          </div>
+
+          {user ? (
+            <div className="pt-2 space-y-2">
+              <p className="text-xs text-gray-400">Signed in as <strong>{user.name}</strong></p>
+              <Link href="/account/my-ads"    className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>My Ads</Link>
+              <Link href="/account/watchlist" className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>Watchlist</Link>
+              <Link href="/messages"          className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>Messages</Link>
+              <button onClick={() => { handleSignOut(); setMenuOpen(false) }} className="block text-sm py-1.5 font-medium text-red-600">
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2 pt-2">
+              <Link href="/login"    className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Login</Link>
+              <Link href="/register" className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Sign up</Link>
+            </div>
+          )}
         </div>
       )}
     </header>

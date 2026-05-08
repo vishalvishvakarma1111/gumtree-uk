@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import { mockListings, similarListings } from '@/lib/data/mock-listings'
 import { ListingCard } from '@/components/listings/listing-card'
 import ImageGallery from '@/components/listing/image-gallery'
@@ -32,6 +33,13 @@ export default async function ListingDetailPage({
   const { id } = await params
   const listing = mockListings.find(l => l.id === id)
   if (!listing) notFound()
+
+  let isAuthenticated = false
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    isAuthenticated = !!user
+  } catch { }
 
   const similar = similarListings(id, listing.categories?.slug ?? '', 6)
   const seller = listing.user_profiles
@@ -134,7 +142,7 @@ export default async function ListingDetailPage({
             </div>
 
             {/* Contact panel (client) */}
-            <ContactPanel listingId={listing.id} sellerName={seller?.name ?? 'Seller'} />
+            <ContactPanel listingId={listing.id} sellerName={seller?.name ?? 'Seller'} isAuthenticated={isAuthenticated} />
 
             {/* Seller card */}
             {seller && (

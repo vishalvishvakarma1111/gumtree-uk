@@ -1,20 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageCircle, Phone, Heart } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { MessageCircle, Heart, Lock } from 'lucide-react'
 
 interface ContactPanelProps {
   listingId: string
   sellerName: string
+  isAuthenticated: boolean
 }
 
-export default function ContactPanel({ listingId, sellerName }: ContactPanelProps) {
+export default function ContactPanel({ listingId, sellerName, isAuthenticated }: ContactPanelProps) {
+  const router = useRouter()
   const [saved, setSaved] = useState(false)
   const [messageOpen, setMessageOpen] = useState(false)
-  const [message, setMessage] = useState(
-    `Hi, I'm interested in this item. Is it still available?`
-  )
+  const [message, setMessage] = useState("Hi, I'm interested in this item. Is it still available?")
   const [sent, setSent] = useState(false)
+
+  function requireAuth(action: () => void) {
+    if (!isAuthenticated) {
+      router.push(`/login?next=/listings/${listingId}`)
+      return
+    }
+    action()
+  }
 
   function handleSend() {
     if (!message.trim()) return
@@ -29,7 +38,7 @@ export default function ContactPanel({ listingId, sellerName }: ContactPanelProp
     <div className="bg-white rounded-lg p-5 border" style={{ borderColor: '#dbdadb' }}>
       {/* Reply button */}
       <button
-        onClick={() => setMessageOpen(true)}
+        onClick={() => requireAuth(() => setMessageOpen(true))}
         className="w-full flex items-center justify-center gap-2 py-3 rounded font-bold text-sm text-white mb-3 transition-opacity hover:opacity-90"
         style={{ backgroundColor: '#e75462' }}
       >
@@ -39,7 +48,7 @@ export default function ContactPanel({ listingId, sellerName }: ContactPanelProp
 
       {/* Save button */}
       <button
-        onClick={() => setSaved(s => !s)}
+        onClick={() => requireAuth(() => setSaved(s => !s))}
         className="w-full flex items-center justify-center gap-2 py-2.5 rounded font-semibold text-sm border transition-colors"
         style={
           saved
@@ -51,6 +60,17 @@ export default function ContactPanel({ listingId, sellerName }: ContactPanelProp
         {saved ? 'Saved to watchlist' : 'Save to watchlist'}
       </button>
 
+      {/* Guest nudge */}
+      {!isAuthenticated && (
+        <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mt-3">
+          <Lock size={11} />
+          <Link href="/login" className="hover:underline" style={{ color: '#0D475C' }}>
+            Log in
+          </Link>
+          {' '}to reply or save
+        </p>
+      )}
+
       {/* Message modal */}
       {messageOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -59,7 +79,7 @@ export default function ContactPanel({ listingId, sellerName }: ContactPanelProp
               Message {sellerName}
             </h3>
             <p className="text-xs text-gray-400 mb-4">
-              Your message will be sent to the seller's inbox.
+              Your message will be sent to the seller&apos;s inbox.
             </p>
             {sent ? (
               <div className="text-center py-8">
@@ -102,3 +122,6 @@ export default function ContactPanel({ listingId, sellerName }: ContactPanelProp
     </div>
   )
 }
+
+// inline import for the nudge link
+import Link from 'next/link'
