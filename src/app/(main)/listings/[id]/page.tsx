@@ -6,6 +6,7 @@ import { ListingCard } from '@/components/listings/listing-card'
 import ImageGallery from '@/components/listing/image-gallery'
 import ContactPanel from '@/components/listing/contact-panel'
 import { formatPrice, timeAgo } from '@/lib/utils'
+import type { Listing } from '@/types'
 import {
   MapPin,
   Clock,
@@ -31,17 +32,53 @@ export default async function ListingDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const listing = mockListings.find(l => l.id === id)
-  if (!listing) notFound()
 
+  let listing: Listing | undefined
   let isAuthenticated = false
+  let dbSimilar: Listing[] | null = null
+  let initialSaved = false
+
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const [{ data: { user } }, { data: dbListing }] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase
+        .from('listings')
+        .select('*, user_profiles(*), categories(*)')
+        .eq('id', id)
+        .maybeSingle(),
+    ])
     isAuthenticated = !!user
+    if (dbListing) {
+      listing = dbListing as Listing
+      const [{ data: similarRows }, { data: watch }] = await Promise.all([
+        supabase
+          .from('listings')
+          .select('*, user_profiles(*), categories(*)')
+          .eq('status', 'active')
+          .eq('category_id', dbListing.category_id)
+          .neq('id', id)
+          .limit(6),
+        user
+          ? supabase
+              .from('watchlist')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('listing_id', id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ])
+      if (similarRows && similarRows.length > 0) dbSimilar = similarRows as Listing[]
+      initialSaved = !!watch
+    }
   } catch { }
 
-  const similar = similarListings(id, listing.categories?.slug ?? '', 6)
+  if (!listing) {
+    listing = mockListings.find(l => l.id === id) as Listing | undefined
+  }
+  if (!listing) notFound()
+
+  const similar = dbSimilar ?? similarListings(id, listing.categories?.slug ?? '', 6)
   const seller = listing.user_profiles
 
   return (
@@ -142,7 +179,7 @@ export default async function ListingDetailPage({
             </div>
 
             {/* Contact panel (client) */}
-            <ContactPanel listingId={listing.id} sellerName={seller?.name ?? 'Seller'} isAuthenticated={isAuthenticated} />
+            <ContactPanel listingId={listing.id} sellerName={seller?.name ?? 'Seller'} isAuthenticated={isAuthenticated} initialSaved={initialSaved} />
 
             {/* Seller card */}
             {seller && (

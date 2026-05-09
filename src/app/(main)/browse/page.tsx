@@ -5,8 +5,8 @@ import { ListingCardSkeleton } from '@/components/listings/listing-card-skeleton
 import FilterSidebar from '@/components/filters/filter-sidebar'
 import SortDropdown from '@/components/browse/sort-dropdown'
 import { mockListings } from '@/lib/data/mock-listings'
+import { createClient } from '@/lib/supabase/server'
 import { Listing } from '@/types'
-import { SlidersHorizontal } from 'lucide-react'
 
 interface SP {
   q?: string
@@ -17,6 +17,47 @@ interface SP {
   conditions?: string
   urgent?: string
   sort?: string
+}
+
+async function fetchFromDb(params: SP): Promise<Listing[] | null> {
+  try {
+    const supabase = await createClient()
+    let query = supabase
+      .from('listings')
+      .select('*, user_profiles(*), categories(*)')
+      .eq('status', 'active')
+
+    if (params.q) query = query.or(`title.ilike.%${params.q}%,description.ilike.%${params.q}%`)
+    if (params.location) query = query.ilike('location', `%${params.location}%`)
+    if (params.min_price) query = query.gte('price', Number(params.min_price))
+    if (params.max_price) query = query.lte('price', Number(params.max_price))
+    if (params.conditions) query = query.in('condition', params.conditions.split(','))
+    if (params.urgent === '1') query = query.eq('is_urgent', true)
+
+    if (params.category) {
+      const { data: cat } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('slug', params.category)
+        .maybeSingle()
+      if (cat) query = query.eq('category_id', cat.id)
+    }
+
+    const sortMap: Record<string, [string, boolean]> = {
+      price_asc: ['price', true],
+      price_desc: ['price', false],
+      oldest: ['created_at', true],
+      newest: ['created_at', false],
+    }
+    const [col, asc] = sortMap[params.sort ?? 'newest'] ?? sortMap.newest
+    query = query.order(col, { ascending: asc, nullsFirst: false })
+
+    const { data, error } = await query.limit(60)
+    if (error || !data || data.length === 0) return null
+    return data as Listing[]
+  } catch {
+    return null
+  }
 }
 
 function applyFilters(params: SP): Listing[] {
@@ -98,7 +139,8 @@ export default async function BrowsePage({
   searchParams: Promise<SP>
 }) {
   const params = await searchParams
-  const listings = applyFilters(params)
+  const dbListings = await fetchFromDb(params)
+  const listings = dbListings ?? applyFilters(params)
   const sort = params.sort ?? 'newest'
 
   return (

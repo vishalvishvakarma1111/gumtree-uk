@@ -24,9 +24,10 @@ interface HeaderUser {
 
 interface HeaderProps {
   user: HeaderUser | null
+  unreadMessages?: number
 }
 
-export default function Header({ user }: HeaderProps) {
+export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -131,11 +132,21 @@ export default function Header({ user }: HeaderProps) {
                 onClick={() => setDropdownOpen(o => !o)}
                 className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
               >
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: '#0D475C' }}
-                >
-                  {initials}
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: '#0D475C' }}
+                  >
+                    {initials}
+                  </div>
+                  {unreadMessages > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 text-[10px] font-bold text-white rounded-full min-w-4 h-4 px-1 flex items-center justify-center"
+                      style={{ backgroundColor: '#e75462' }}
+                    >
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
                 </div>
                 <span className="text-sm font-medium max-w-[80px] truncate" style={{ color: '#0D475C' }}>
                   {user.name}
@@ -160,11 +171,11 @@ export default function Header({ user }: HeaderProps) {
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
                   {[
-                    { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText },
-                    { label: 'Watchlist', href: '/account/watchlist', Icon: Heart },
-                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle },
-                    { label: 'Profile',   href: '/account/profile',   Icon: Settings },
-                  ].map(({ label, href, Icon }) => (
+                    { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText, badge: 0 },
+                    { label: 'Watchlist', href: '/account/watchlist', Icon: Heart, badge: 0 },
+                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle, badge: unreadMessages },
+                    { label: 'Profile',   href: '/account/profile',   Icon: Settings, badge: 0 },
+                  ].map(({ label, href, Icon, badge }) => (
                     <Link
                       key={href}
                       href={href}
@@ -172,7 +183,15 @@ export default function Header({ user }: HeaderProps) {
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       <Icon size={14} className="text-gray-400" />
-                      {label}
+                      <span className="flex-1">{label}</span>
+                      {badge > 0 && (
+                        <span
+                          className="text-[10px] font-bold text-white rounded-full px-1.5 py-0.5 min-w-5 text-center"
+                          style={{ backgroundColor: '#e75462' }}
+                        >
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
                     </Link>
                   ))}
                   <div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
