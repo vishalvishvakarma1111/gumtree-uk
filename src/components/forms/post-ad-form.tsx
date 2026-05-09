@@ -81,18 +81,26 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (photos.length >= 10) return
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+
+    const remaining = 10 - photos.length
+    if (remaining <= 0) return
+    const toUpload = files.slice(0, remaining)
 
     setUploadingPhoto(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: fd })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setPhotos(p => [...p, data.url])
+      const results = await Promise.all(
+        toUpload.map(async file => {
+          const fd = new FormData()
+          fd.append('file', file)
+          const res = await fetch('/api/upload', { method: 'POST', body: fd })
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.error)
+          return data.url as string
+        })
+      )
+      setPhotos(p => [...p, ...results])
     } catch {
       // silently ignore upload errors for demo
     } finally {
@@ -342,6 +350,7 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
                 ref={fileRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                multiple
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
