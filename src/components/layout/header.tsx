@@ -32,8 +32,13 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const [location, setLocation] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [unread, setUnread] = useState(unreadMessages)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    setUnread(unreadMessages)
+  }, [unreadMessages])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -45,6 +50,39 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Realtime unread badge — refetch count on any message INSERT/UPDATE.
+  useEffect(() => {
+    if (!user) return
+    const supabase = createClient()
+
+    async function refresh() {
+      try {
+        const res = await fetch('/api/messages/unread-count', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        setUnread(data.count ?? 0)
+      } catch {
+        // ignore
+      }
+    }
+
+    const channel = supabase
+      .channel(`unread:${user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, refresh)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, refresh)
+      .subscribe()
+
+    function onVisible() {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [user])
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -139,12 +177,12 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
                   >
                     {initials}
                   </div>
-                  {unreadMessages > 0 && (
+                  {unread > 0 && (
                     <span
                       className="absolute -top-1 -right-1 text-[10px] font-bold text-white rounded-full min-w-4 h-4 px-1 flex items-center justify-center"
                       style={{ backgroundColor: '#e75462' }}
                     >
-                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                      {unread > 9 ? '9+' : unread}
                     </span>
                   )}
                 </div>
@@ -173,7 +211,7 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
                   {[
                     { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText, badge: 0 },
                     { label: 'Watchlist', href: '/account/watchlist', Icon: Heart, badge: 0 },
-                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle, badge: unreadMessages },
+                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle, badge: unread },
                     { label: 'Profile',   href: '/account/profile',   Icon: Settings, badge: 0 },
                   ].map(({ label, href, Icon, badge }) => (
                     <Link

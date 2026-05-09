@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 import { MessageCircle } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
+import MessagesRefresher from './messages-refresher'
 
 interface ConversationRow {
   id: string
@@ -68,6 +69,7 @@ export default async function MessagesPage() {
 
   return (
     <div style={{ backgroundColor: '#f1f1f1', minHeight: '100vh' }}>
+      <MessagesRefresher userId={user.id} />
       <div className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-xl font-extrabold mb-6" style={{ color: '#0D475C' }}>Messages</h1>
 

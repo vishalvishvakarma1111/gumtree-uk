@@ -53,7 +53,7 @@ async function fetchFromDb(params: SP): Promise<Listing[] | null> {
     query = query.order(col, { ascending: asc, nullsFirst: false })
 
     const { data, error } = await query.limit(60)
-    if (error || !data || data.length === 0) return null
+    if (error || !data) return null
     return data as Listing[]
   } catch {
     return null
@@ -124,6 +124,21 @@ function applyFilters(params: SP): Listing[] {
   return out
 }
 
+function sortListings(rows: Listing[], sort?: string): Listing[] {
+  const out = [...rows]
+  switch (sort) {
+    case 'price_asc':
+      out.sort((a, b) => (a.price ?? 0) - (b.price ?? 0)); break
+    case 'price_desc':
+      out.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); break
+    case 'oldest':
+      out.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); break
+    default:
+      out.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }
+  return out
+}
+
 function pageTitle(params: SP): string {
   if (params.q && params.location) return `"${params.q}" in ${params.location}`
   if (params.q) return `"${params.q}"`
@@ -140,7 +155,11 @@ export default async function BrowsePage({
 }) {
   const params = await searchParams
   const dbListings = await fetchFromDb(params)
-  const listings = dbListings ?? applyFilters(params)
+  const mockMatches = applyFilters(params)
+  const merged = dbListings
+    ? [...dbListings, ...mockMatches.filter(m => !dbListings.some(d => d.id === m.id))]
+    : mockMatches
+  const listings = sortListings(merged, params.sort)
   const sort = params.sort ?? 'newest'
 
   return (
