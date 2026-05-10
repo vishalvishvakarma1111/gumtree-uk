@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
         images: images ?? [],
         offers_shipping: offers_shipping ?? false,
         is_urgent: is_urgent ?? false,
-        status: 'active',
+        status: 'pending',
       })
       .select('id')
       .single()
