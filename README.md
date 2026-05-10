@@ -37,8 +37,10 @@ search parsing.
   share, report, similar ads, breadcrumbs
 - Multi-step Post-an-Ad flow: category → details → photos (multi-upload, max 10) →
   location → review
-- Account: My Ads (Active / Sold / Drafts / Expired tabs), Edit listing, Watchlist,
-  Reviews received, Public profile, Profile + password change
+- Account: My Ads (Pending / Active / Sold / Rejected / Drafts / Expired tabs),
+  Edit listing, Watchlist, Reviews received, Public profile, Profile + password change
+- Admin panel at `/admin` (single hardcoded admin via `ADMIN_EMAIL`):
+  approve/reject pending listings, triage reports, take down ads
 - Messaging: inbox, chat thread, real-time delivery, unread badge in header
 - Public seller profile at `/users/[id]`
 
@@ -85,6 +87,7 @@ Copy `.env.example` to `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | Supabase project settings → API → `anon public` key   |
 | `SUPABASE_SERVICE_ROLE_KEY`      | Supabase project settings → API → `service_role` key  |
 | `ANTHROPIC_API_KEY`              | [console.anthropic.com](https://console.anthropic.com) |
+| `ADMIN_EMAIL`                    | The single user email allowed to access `/admin`      |
 
 ### 4. Run
 

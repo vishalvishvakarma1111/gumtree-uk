@@ -7,8 +7,10 @@ import type { Listing } from '@/types'
 import MyAdActions from './ad-actions'
 
 const TABS = [
+  { value: 'pending', label: 'Pending' },
   { value: 'active', label: 'Active' },
   { value: 'sold', label: 'Sold' },
+  { value: 'rejected', label: 'Rejected' },
   { value: 'draft', label: 'Drafts' },
   { value: 'expired', label: 'Expired' },
 ] as const
@@ -18,13 +20,13 @@ type TabValue = typeof TABS[number]['value']
 export default async function MyAdsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; posted?: string }>
 }) {
-  const { tab } = await searchParams
+  const { tab, posted } = await searchParams
   const activeTab: TabValue = (TABS.find(t => t.value === tab)?.value ?? 'active') as TabValue
 
   let listings: Listing[] = []
-  const counts: Record<TabValue, number> = { active: 0, sold: 0, draft: 0, expired: 0 }
+  const counts: Record<TabValue, number> = { pending: 0, active: 0, sold: 0, rejected: 0, draft: 0, expired: 0 }
 
   try {
     const supabase = await createClient()
@@ -57,6 +59,13 @@ export default async function MyAdsPage({
           Post new ad
         </Link>
       </div>
+
+      {posted === '1' && (
+        <div className="mb-4 px-4 py-3 rounded-lg border text-sm" style={{ backgroundColor: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}>
+          <p className="font-semibold">Ad submitted for review</p>
+          <p className="text-xs mt-0.5">Our moderation team usually approves within a few hours. You&apos;ll see it under <strong>Pending</strong> until then.</p>
+        </div>
+      )}
 
       <div className="flex gap-1 border-b mb-5" style={{ borderColor: '#dbdadb' }}>
         {TABS.map(t => {
@@ -138,8 +147,10 @@ export default async function MyAdsPage({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, { bg: string; color: string; label: string }> = {
+    pending: { bg: '#fef3c7', color: '#a16207', label: 'Pending review' },
     active: { bg: '#dcfce7', color: '#15803d', label: 'Active' },
     sold: { bg: '#e5e7eb', color: '#4b5563', label: 'Sold' },
+    rejected: { bg: '#fee2e2', color: '#b91c1c', label: 'Rejected' },
     expired: { bg: '#fee2e2', color: '#b91c1c', label: 'Expired' },
     draft: { bg: '#fef3c7', color: '#a16207', label: 'Draft' },
   }

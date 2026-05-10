@@ -45,11 +45,27 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
     }
   }
 
-  function submitReport() {
+  async function submitReport() {
     if (!reportReason.trim()) return
-    setReported(true)
-    setReportOpen(false)
-    setTimeout(() => setReported(false), 3000)
+    try {
+      const res = await fetch(`/api/listings/${listingId}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reportReason }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed')
+      }
+      setReported(true)
+      setReportOpen(false)
+      setReportReason('')
+      setTimeout(() => setReported(false), 4000)
+    } catch {
+      // surface minimal feedback; details ignored to keep panel simple
+      setReported(false)
+      setReportOpen(false)
+    }
   }
 
   function requireAuth(action: () => void) {

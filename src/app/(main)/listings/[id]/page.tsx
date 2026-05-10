@@ -7,6 +7,7 @@ import ImageGallery from '@/components/listing/image-gallery'
 import ContactPanel from '@/components/listing/contact-panel'
 import ReviewForm from '@/components/listing/review-form'
 import ViewTracker from '@/components/listing/view-tracker'
+import { isAdminUser } from '@/lib/admin'
 import { formatPrice, timeAgo } from '@/lib/utils'
 import type { Listing } from '@/types'
 import {
@@ -91,6 +92,15 @@ export default async function ListingDetailPage({
     listing = mockListings.find(l => l.id === id) as Listing | undefined
   }
   if (!listing) notFound()
+
+  // Hide non-active listings from non-owner / non-admin viewers.
+  const supabaseAuth = await createClient()
+  const { data: { user: viewer } } = await supabaseAuth.auth.getUser()
+  const isOwner = !!viewer && viewer.id === listing.user_id
+  const isAdmin = isAdminUser(viewer)
+  if (listing.status !== 'active' && !isOwner && !isAdmin) {
+    notFound()
+  }
 
   const similar = dbSimilar ?? similarListings(id, listing.categories?.slug ?? '', 6)
   const seller = listing.user_profiles

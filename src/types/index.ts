@@ -31,7 +31,8 @@ export interface Listing {
   location: string
   latitude: number | null
   longitude: number | null
-  status: 'active' | 'sold' | 'expired' | 'draft'
+  status: 'active' | 'sold' | 'expired' | 'draft' | 'pending' | 'rejected'
+  rejection_reason?: string | null
   offers_shipping: boolean
   is_urgent: boolean
   views_count: number

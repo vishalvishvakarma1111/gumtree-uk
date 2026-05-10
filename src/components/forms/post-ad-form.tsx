@@ -205,7 +205,7 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      router.push(`/listings/${data.id}`)
+      router.push('/account/my-ads?tab=pending&posted=1')
       router.refresh()
     } catch {
       setErrors({ submit: 'Failed to post ad. Please try again.' })
