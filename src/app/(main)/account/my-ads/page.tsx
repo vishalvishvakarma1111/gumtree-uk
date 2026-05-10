@@ -6,28 +6,48 @@ import { formatPrice, timeAgo } from '@/lib/utils'
 import type { Listing } from '@/types'
 import MyAdActions from './ad-actions'
 
-export default async function MyAdsPage() {
+const TABS = [
+  { value: 'active', label: 'Active' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'draft', label: 'Drafts' },
+  { value: 'expired', label: 'Expired' },
+] as const
+
+type TabValue = typeof TABS[number]['value']
+
+export default async function MyAdsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const { tab } = await searchParams
+  const activeTab: TabValue = (TABS.find(t => t.value === tab)?.value ?? 'active') as TabValue
+
   let listings: Listing[] = []
+  const counts: Record<TabValue, number> = { active: 0, sold: 0, draft: 0, expired: 0 }
 
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      const { data } = await supabase
+      const { data: all } = await supabase
         .from('listings')
         .select('*, categories(*)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-      listings = (data ?? []) as Listing[]
+
+      const rows = (all ?? []) as Listing[]
+      for (const r of rows) {
+        if (r.status in counts) counts[r.status as TabValue]++
+      }
+      listings = rows.filter(r => r.status === activeTab)
     }
   } catch { }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-extrabold" style={{ color: '#0D475C' }}>
-          My Ads {listings.length > 0 && <span className="text-sm font-normal text-gray-400">({listings.length})</span>}
-        </h2>
+        <h2 className="text-lg font-extrabold" style={{ color: '#0D475C' }}>My Ads</h2>
         <Link
           href="/post-ad"
           className="flex items-center gap-1.5 text-sm font-bold text-white px-4 py-2 rounded transition-opacity hover:opacity-90"
@@ -38,18 +58,39 @@ export default async function MyAdsPage() {
         </Link>
       </div>
 
+      <div className="flex gap-1 border-b mb-5" style={{ borderColor: '#dbdadb' }}>
+        {TABS.map(t => {
+          const isActive = t.value === activeTab
+          return (
+            <Link
+              key={t.value}
+              href={`/account/my-ads?tab=${t.value}`}
+              className="px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors"
+              style={{
+                color: isActive ? '#0D475C' : '#888',
+                borderColor: isActive ? '#0D475C' : 'transparent',
+              }}
+            >
+              {t.label} <span className="text-xs font-normal text-gray-400">({counts[t.value]})</span>
+            </Link>
+          )
+        })}
+      </div>
+
       {listings.length === 0 ? (
         <div className="bg-white rounded-xl border py-16 text-center" style={{ borderColor: '#dbdadb' }}>
           <p className="text-5xl mb-4">📋</p>
-          <h3 className="font-bold text-gray-700 mb-2">No ads yet</h3>
-          <p className="text-sm text-gray-400 mb-6">Your posted ads will appear here.</p>
-          <Link
-            href="/post-ad"
-            className="inline-block px-6 py-2.5 rounded text-white text-sm font-bold"
-            style={{ backgroundColor: '#e75462' }}
-          >
-            Post your first ad
-          </Link>
+          <h3 className="font-bold text-gray-700 mb-2">No {activeTab} ads</h3>
+          <p className="text-sm text-gray-400 mb-6">Your {activeTab} ads will appear here.</p>
+          {activeTab === 'active' && (
+            <Link
+              href="/post-ad"
+              className="inline-block px-6 py-2.5 rounded text-white text-sm font-bold"
+              style={{ backgroundColor: '#e75462' }}
+            >
+              Post your first ad
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

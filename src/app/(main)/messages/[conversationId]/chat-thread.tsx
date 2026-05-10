@@ -1,9 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Send, Loader2 } from 'lucide-react'
+import { Send, Loader2, ShieldAlert } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Message } from '@/types'
+
+type RiskLevel = 'low' | 'medium' | 'high'
+interface SafetyResult { risk: RiskLevel; reasons: string[]; advice: string }
 
 interface ChatThreadProps {
   conversationId: string
@@ -16,7 +19,34 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [safety, setSafety] = useState<Record<string, SafetyResult>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const toCheck = messages.filter(
+      m => m.sender_id !== currentUserId && !(m.id in safety) && m.content?.trim().length > 0
+    )
+    if (toCheck.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      for (const m of toCheck) {
+        try {
+          const res = await fetch('/api/ai/check-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: m.content }),
+          })
+          if (!res.ok) continue
+          const data = (await res.json()) as SafetyResult
+          if (cancelled) return
+          setSafety(s => ({ ...s, [m.id]: data }))
+        } catch {
+          // ignore
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [messages, currentUserId, safety])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -88,13 +118,17 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
         ) : (
           messages.map(m => {
             const mine = m.sender_id === currentUserId
+            const risk = safety[m.id]
+            const flagged = risk && risk.risk !== 'low'
             return (
-              <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div key={m.id} className={`flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
                 <div
                   className="max-w-[75%] px-4 py-2 rounded-2xl text-sm"
                   style={
                     mine
                       ? { backgroundColor: '#0D475C', color: '#fff', borderBottomRightRadius: 4 }
+                      : flagged
+                      ? { backgroundColor: '#fff7ed', color: '#1f2937', borderBottomLeftRadius: 4, border: '1px solid #fed7aa' }
                       : { backgroundColor: '#fff', color: '#1f2937', borderBottomLeftRadius: 4, border: '1px solid #dbdadb' }
                   }
                 >
@@ -106,6 +140,23 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
                     {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
+                {flagged && (
+                  <div
+                    className="max-w-[75%] mt-1 px-3 py-1.5 rounded-lg text-[11px] flex items-start gap-1.5"
+                    style={{
+                      backgroundColor: risk!.risk === 'high' ? '#fef2f2' : '#fffbeb',
+                      color: risk!.risk === 'high' ? '#b91c1c' : '#a16207',
+                      border: `1px solid ${risk!.risk === 'high' ? '#fecaca' : '#fde68a'}`,
+                    }}
+                  >
+                    <ShieldAlert size={12} className="flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold uppercase">AI safety warning · {risk!.risk}</p>
+                      {risk!.reasons.length > 0 && <p>{risk!.reasons.join(' · ')}</p>}
+                      {risk!.advice && <p className="italic mt-0.5">{risk!.advice}</p>}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })

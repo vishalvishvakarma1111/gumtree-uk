@@ -3,7 +3,56 @@ import Image from 'next/image'
 import { Listing } from '@/types'
 import { timeAgo, formatPrice } from '@/lib/utils'
 
-export function ListingCard({ listing }: { listing: Listing }) {
+interface Props {
+  listing: Listing
+  variant?: 'grid' | 'list'
+}
+
+export function ListingCard({ listing, variant = 'grid' }: Props) {
+  if (variant === 'list') {
+    return (
+      <Link href={`/listings/${listing.id}`}>
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer flex">
+          <div className="relative w-32 h-32 sm:w-40 sm:h-40 bg-gray-100 flex-shrink-0">
+            {listing.images?.[0] ? (
+              <Image
+                src={listing.images[0]}
+                alt={listing.title}
+                fill
+                className="object-cover"
+                sizes="160px"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-3xl">📷</div>
+            )}
+            {listing.is_urgent && (
+              <span className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+                Urgent
+              </span>
+            )}
+          </div>
+          <div className="p-3 flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{listing.title}</p>
+            <p className="text-lg font-bold mt-1" style={{ color: '#e75462' }}>
+              {formatPrice(listing.price, listing.price_type)}
+            </p>
+            {listing.description && (
+              <p className="text-xs text-gray-500 mt-1 line-clamp-2">{listing.description}</p>
+            )}
+            <p className="text-xs text-gray-400 mt-1.5 truncate">
+              {listing.location} · {timeAgo(listing.created_at)}
+            </p>
+            {listing.condition && listing.condition !== 'good' && (
+              <span className="inline-block mt-1.5 bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
+                {CONDITION_LABELS[listing.condition] ?? listing.condition}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    )
+  }
+
   return (
     <Link href={`/listings/${listing.id}`}>
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">

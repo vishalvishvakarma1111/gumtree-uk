@@ -5,6 +5,8 @@ import { mockListings, similarListings } from '@/lib/data/mock-listings'
 import { ListingCard } from '@/components/listings/listing-card'
 import ImageGallery from '@/components/listing/image-gallery'
 import ContactPanel from '@/components/listing/contact-panel'
+import ReviewForm from '@/components/listing/review-form'
+import ViewTracker from '@/components/listing/view-tracker'
 import { formatPrice, timeAgo } from '@/lib/utils'
 import type { Listing } from '@/types'
 import {
@@ -37,6 +39,8 @@ export default async function ListingDetailPage({
   let isAuthenticated = false
   let dbSimilar: Listing[] | null = null
   let initialSaved = false
+  let currentUserId: string | null = null
+  let alreadyReviewed = false
 
   try {
     const supabase = await createClient()
@@ -49,6 +53,7 @@ export default async function ListingDetailPage({
         .maybeSingle(),
     ])
     isAuthenticated = !!user
+    currentUserId = user?.id ?? null
     if (dbListing) {
       listing = dbListing as Listing
       const [{ data: similarRows }, { data: watch }] = await Promise.all([
@@ -70,6 +75,15 @@ export default async function ListingDetailPage({
       ])
       if (similarRows && similarRows.length > 0) dbSimilar = similarRows as Listing[]
       initialSaved = !!watch
+      if (user && dbListing.user_id !== user.id) {
+        const { data: existingReview } = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('reviewer_id', user.id)
+          .eq('listing_id', id)
+          .maybeSingle()
+        alreadyReviewed = !!existingReview
+      }
     }
   } catch { }
 
@@ -83,6 +97,7 @@ export default async function ListingDetailPage({
 
   return (
     <div style={{ backgroundColor: '#f1f1f1', minHeight: '100vh' }}>
+      <ViewTracker listingId={listing.id} />
       {/* ── Breadcrumb ── */}
       <div className="bg-white border-b" style={{ borderColor: '#dbdadb' }}>
         <div className="max-w-7xl mx-auto px-4 py-2.5">
@@ -181,6 +196,14 @@ export default async function ListingDetailPage({
             {/* Contact panel (client) */}
             <ContactPanel listingId={listing.id} sellerName={seller?.name ?? 'Seller'} isAuthenticated={isAuthenticated} initialSaved={initialSaved} />
 
+            {isAuthenticated && currentUserId && listing.user_id !== currentUserId && (
+              <ReviewForm
+                listingId={listing.id}
+                sellerName={seller?.name ?? 'Seller'}
+                alreadyReviewed={alreadyReviewed}
+              />
+            )}
+
             {/* Seller card */}
             {seller && (
               <div className="bg-white rounded-lg p-5 border" style={{ borderColor: '#dbdadb' }}>
@@ -210,11 +233,11 @@ export default async function ListingDetailPage({
                   </div>
                 </div>
                 <Link
-                  href={`/sellers/${seller.id}`}
+                  href={`/users/${seller.id}`}
                   className="block text-center text-xs font-semibold py-2 rounded border hover:bg-gray-50 transition-colors"
                   style={{ borderColor: '#0D475C', color: '#0D475C' }}
                 >
-                  View all seller's ads
+                  View all seller&apos;s ads
                 </Link>
               </div>
             )}

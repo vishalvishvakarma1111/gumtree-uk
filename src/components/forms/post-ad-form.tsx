@@ -47,6 +47,10 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
   // AI state
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
+  const [titleAiLoading, setTitleAiLoading] = useState(false)
+  const [titleSuggestions, setTitleSuggestions] = useState<string[]>([])
+  const [priceAiLoading, setPriceAiLoading] = useState(false)
+  const [priceSuggestion, setPriceSuggestion] = useState<{ min: number | null; max: number | null; reasoning: string } | null>(null)
 
   // Submit state
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +81,52 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
       setAiError(err instanceof Error ? err.message : 'Failed to generate description')
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  async function handleImproveTitle() {
+    if (!title.trim()) {
+      setErrors(e => ({ ...e, title: 'Enter a title first' }))
+      return
+    }
+    setTitleAiLoading(true)
+    setAiError('')
+    try {
+      const res = await fetch('/api/ai/improve-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, category: categoryName }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setTitleSuggestions(data.suggestions ?? [])
+    } catch (err: unknown) {
+      setAiError(err instanceof Error ? err.message : 'Failed to improve title')
+    } finally {
+      setTitleAiLoading(false)
+    }
+  }
+
+  async function handleSuggestPrice() {
+    if (!title.trim()) {
+      setErrors(e => ({ ...e, title: 'Enter a title first' }))
+      return
+    }
+    setPriceAiLoading(true)
+    setAiError('')
+    try {
+      const res = await fetch('/api/ai/suggest-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, category: categoryName, condition }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPriceSuggestion({ min: data.min, max: data.max, reasoning: data.reasoning })
+    } catch (err: unknown) {
+      setAiError(err instanceof Error ? err.message : 'Failed to suggest price')
+    } finally {
+      setPriceAiLoading(false)
     }
   }
 
@@ -208,18 +258,46 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
           {step === 0 && (
             <>
               <Field label="Title" error={errors.title}>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={e => { setTitle(e.target.value); setErrors(er => ({ ...er, title: '' })) }}
-                  placeholder={`e.g. ${categoryName === 'Electronics' ? 'iPhone 14 Pro 256GB Space Black' : `${categoryName} item for sale`}`}
-                  maxLength={100}
-                  className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none"
-                  style={{ borderColor: errors.title ? '#e75462' : '#dbdadb' }}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
-                  onBlur={e => (e.currentTarget.style.borderColor = errors.title ? '#e75462' : '#dbdadb')}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={e => { setTitle(e.target.value); setErrors(er => ({ ...er, title: '' })) }}
+                    placeholder={`e.g. ${categoryName === 'Electronics' ? 'iPhone 14 Pro 256GB Space Black' : `${categoryName} item for sale`}`}
+                    maxLength={100}
+                    className="w-full border rounded-lg px-3 py-2.5 pr-32 text-sm outline-none"
+                    style={{ borderColor: errors.title ? '#e75462' : '#dbdadb' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+                    onBlur={e => (e.currentTarget.style.borderColor = errors.title ? '#e75462' : '#dbdadb')}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleImproveTitle}
+                    disabled={titleAiLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded border transition-colors disabled:opacity-60"
+                    style={{ color: '#7c3aed', borderColor: '#ddd4fe', backgroundColor: '#f5f3ff' }}
+                  >
+                    {titleAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    {titleAiLoading ? '…' : 'Improve'}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-400 mt-1">{title.length}/100 characters</p>
+                {titleSuggestions.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-xs font-semibold" style={{ color: '#7c3aed' }}>AI suggestions — tap to use:</p>
+                    {titleSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => { setTitle(s); setTitleSuggestions([]) }}
+                        className="block w-full text-left text-xs px-3 py-2 rounded-lg border hover:bg-gray-50 transition-colors"
+                        style={{ borderColor: '#ddd4fe', backgroundColor: '#fafafe' }}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Field>
 
               <Field label="Description" error={errors.description}>
@@ -272,12 +350,52 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
                         onChange={e => { setPrice(e.target.value); setErrors(er => ({ ...er, price: '' })) }}
                         placeholder="0.00"
                         min={0}
-                        className="w-full border rounded-lg pl-7 pr-3 py-2.5 text-sm outline-none"
+                        className="w-full border rounded-lg pl-7 pr-24 py-2.5 text-sm outline-none"
                         style={{ borderColor: errors.price ? '#e75462' : '#dbdadb' }}
                         onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
                         onBlur={e => (e.currentTarget.style.borderColor = errors.price ? '#e75462' : '#dbdadb')}
                       />
+                      <button
+                        type="button"
+                        onClick={handleSuggestPrice}
+                        disabled={priceAiLoading}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded border transition-colors disabled:opacity-60"
+                        style={{ color: '#7c3aed', borderColor: '#ddd4fe', backgroundColor: '#f5f3ff' }}
+                      >
+                        {priceAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        {priceAiLoading ? '…' : 'Suggest'}
+                      </button>
                     </div>
+                    {priceSuggestion && (priceSuggestion.min !== null || priceSuggestion.max !== null) && (
+                      <div className="mt-2 px-3 py-2 rounded-lg border text-xs" style={{ borderColor: '#ddd4fe', backgroundColor: '#fafafe' }}>
+                        <p className="font-semibold" style={{ color: '#7c3aed' }}>
+                          Suggested: £{priceSuggestion.min ?? '?'} – £{priceSuggestion.max ?? '?'}
+                        </p>
+                        {priceSuggestion.reasoning && <p className="text-gray-600 mt-0.5">{priceSuggestion.reasoning}</p>}
+                        <div className="flex gap-2 mt-1.5">
+                          {priceSuggestion.min !== null && (
+                            <button
+                              type="button"
+                              onClick={() => { setPrice(String(priceSuggestion.min)); setPriceSuggestion(null) }}
+                              className="text-xs font-semibold underline"
+                              style={{ color: '#7c3aed' }}
+                            >
+                              Use £{priceSuggestion.min}
+                            </button>
+                          )}
+                          {priceSuggestion.max !== null && (
+                            <button
+                              type="button"
+                              onClick={() => { setPrice(String(priceSuggestion.max)); setPriceSuggestion(null) }}
+                              className="text-xs font-semibold underline"
+                              style={{ color: '#7c3aed' }}
+                            >
+                              Use £{priceSuggestion.max}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </Field>
                 )}
               </div>

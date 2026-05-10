@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { FileText, Heart, MessageCircle, User } from 'lucide-react'
+import { FileText, Heart, MessageCircle, User, Star } from 'lucide-react'
 
 const NAV = [
   { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText },
   { label: 'Watchlist', href: '/account/watchlist', Icon: Heart },
   { label: 'Messages',  href: '/messages',          Icon: MessageCircle },
+  { label: 'Reviews',   href: '/account/reviews',   Icon: Star },
   { label: 'Profile',   href: '/account/profile',   Icon: User },
 ]
 

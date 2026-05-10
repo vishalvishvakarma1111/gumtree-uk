@@ -2,7 +2,8 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Mail, User as UserIcon, Camera } from 'lucide-react'
+import { Loader2, Mail, User as UserIcon, Camera, Lock } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 interface ProfileFormProps {
   email: string
@@ -69,6 +70,7 @@ export default function ProfileForm({ email, initial }: ProfileFormProps) {
   }
 
   return (
+    <div className="space-y-6">
     <form onSubmit={handleSave} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#dbdadb' }}>
       <div className="px-6 py-6 flex items-center gap-5 border-b" style={{ borderColor: '#f0f0f0' }}>
         <button
@@ -170,6 +172,79 @@ export default function ProfileForm({ email, initial }: ProfileFormProps) {
         >
           {saving && <Loader2 size={14} className="animate-spin" />}
           {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    </form>
+    <PasswordSection />
+    </div>
+  )
+}
+
+function PasswordSection() {
+  const [pwd, setPwd] = useState('')
+  const [pwd2, setPwd2] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  async function handleChange(e: React.FormEvent) {
+    e.preventDefault()
+    setMsg(null)
+    if (pwd.length < 6) return setMsg({ type: 'error', text: 'Password must be ≥ 6 chars' })
+    if (pwd !== pwd2) return setMsg({ type: 'error', text: 'Passwords don’t match' })
+    setBusy(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: pwd })
+      if (error) throw error
+      setMsg({ type: 'success', text: 'Password updated' })
+      setPwd(''); setPwd2('')
+    } catch (err: unknown) {
+      setMsg({ type: 'error', text: err instanceof Error ? err.message : 'Failed' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleChange} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: '#dbdadb' }}>
+      <div className="px-6 py-4 border-b flex items-center gap-2" style={{ borderColor: '#f0f0f0' }}>
+        <Lock size={14} style={{ color: '#0D475C' }} />
+        <h3 className="font-bold text-sm" style={{ color: '#0D475C' }}>Change password</h3>
+      </div>
+      <div className="p-6 space-y-4">
+        <Field label="New password">
+          <input
+            type="password"
+            value={pwd}
+            onChange={e => setPwd(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none"
+            style={{ borderColor: '#dbdadb' }}
+            autoComplete="new-password"
+          />
+        </Field>
+        <Field label="Confirm password">
+          <input
+            type="password"
+            value={pwd2}
+            onChange={e => setPwd2(e.target.value)}
+            className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none"
+            style={{ borderColor: '#dbdadb' }}
+            autoComplete="new-password"
+          />
+        </Field>
+        {msg && (
+          <p className={`text-sm ${msg.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>{msg.text}</p>
+        )}
+      </div>
+      <div className="px-6 py-4 border-t flex justify-end" style={{ borderColor: '#f0f0f0' }}>
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex items-center gap-1.5 px-6 py-2.5 rounded text-white text-sm font-bold disabled:opacity-60"
+          style={{ backgroundColor: '#0D475C' }}
+        >
+          {busy && <Loader2 size={14} className="animate-spin" />}
+          {busy ? 'Updating…' : 'Update password'}
         </button>
       </div>
     </form>

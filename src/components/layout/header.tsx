@@ -3,17 +3,75 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings } from 'lucide-react'
+import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings, Sparkles, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-const NAV_ITEMS = [
-  { label: 'Cars & Vehicles', slug: 'cars-vehicles' },
-  { label: 'For Sale',        slug: 'for-sale' },
-  { label: 'Services',        slug: 'services' },
-  { label: 'Property',        slug: 'property' },
-  { label: 'Pets',            slug: 'pets' },
-  { label: 'Jobs',            slug: 'jobs' },
-  { label: 'Community',       slug: 'community' },
+const NAV_ITEMS: { label: string; slug: string; sub: { label: string; slug: string }[] }[] = [
+  {
+    label: 'Cars & Vehicles', slug: 'cars-vehicles',
+    sub: [
+      { label: 'Cars', slug: 'cars' },
+      { label: 'Vans', slug: 'vans' },
+      { label: 'Motorbikes', slug: 'motorbikes' },
+      { label: 'Caravans', slug: 'caravans' },
+      { label: 'Parts & Accessories', slug: 'parts-accessories' },
+    ],
+  },
+  {
+    label: 'For Sale', slug: 'for-sale',
+    sub: [
+      { label: 'Electronics', slug: 'electronics' },
+      { label: 'Home & Garden', slug: 'home-garden' },
+      { label: 'Clothing', slug: 'clothing' },
+      { label: 'Baby & Kids', slug: 'baby-kids' },
+      { label: 'Sports & Leisure', slug: 'sports-leisure' },
+    ],
+  },
+  {
+    label: 'Services', slug: 'services',
+    sub: [
+      { label: 'Trades', slug: 'trades' },
+      { label: 'Tutoring', slug: 'tutoring' },
+      { label: 'Childcare', slug: 'childcare' },
+      { label: 'Health & Beauty', slug: 'health-beauty' },
+    ],
+  },
+  {
+    label: 'Property', slug: 'property',
+    sub: [
+      { label: 'Flats to rent', slug: 'flats-rent' },
+      { label: 'Houses to rent', slug: 'houses-rent' },
+      { label: 'For sale', slug: 'property-sale' },
+      { label: 'Rooms', slug: 'rooms' },
+    ],
+  },
+  {
+    label: 'Pets', slug: 'pets',
+    sub: [
+      { label: 'Dogs', slug: 'dogs' },
+      { label: 'Cats', slug: 'cats' },
+      { label: 'Other pets', slug: 'other-pets' },
+      { label: 'Accessories', slug: 'pet-accessories' },
+    ],
+  },
+  {
+    label: 'Jobs', slug: 'jobs',
+    sub: [
+      { label: 'Full-time', slug: 'full-time' },
+      { label: 'Part-time', slug: 'part-time' },
+      { label: 'Temporary', slug: 'temporary' },
+      { label: 'Voluntary', slug: 'voluntary' },
+    ],
+  },
+  {
+    label: 'Community', slug: 'community',
+    sub: [
+      { label: 'Events', slug: 'events' },
+      { label: 'Lost & Found', slug: 'lost-found' },
+      { label: 'Free stuff', slug: 'free-stuff' },
+      { label: 'Volunteers', slug: 'volunteers' },
+    ],
+  },
 ]
 
 interface HeaderUser {
@@ -33,6 +91,8 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unread, setUnread] = useState(unreadMessages)
+  const [smartSearch, setSmartSearch] = useState(false)
+  const [smartSearching, setSmartSearching] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -84,8 +144,34 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
     }
   }, [user])
 
-  function handleSearch(e: React.FormEvent) {
+  async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
+    if (smartSearch && query.trim()) {
+      setSmartSearching(true)
+      try {
+        const res = await fetch('/api/ai/parse-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const params = new URLSearchParams()
+          if (data.keyword) params.set('q', data.keyword)
+          if (data.location) params.set('location', data.location)
+          else if (location) params.set('location', location)
+          if (data.min_price !== null) params.set('min_price', String(data.min_price))
+          if (data.max_price !== null) params.set('max_price', String(data.max_price))
+          if (data.category) params.set('category', data.category)
+          setSmartSearching(false)
+          router.push(`/browse?${params.toString()}`)
+          return
+        }
+      } catch {
+        // fall through to normal search
+      }
+      setSmartSearching(false)
+    }
     const params = new URLSearchParams()
     if (query) params.set('q', query)
     if (location) params.set('location', location)
@@ -129,9 +215,19 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="What are you looking for?"
+              placeholder={smartSearch ? 'Try "cheap iPhone under £200 in London"' : 'What are you looking for?'}
               className="flex-1 px-3 py-2 text-sm outline-none text-gray-800"
             />
+            <button
+              type="button"
+              onClick={() => setSmartSearch(s => !s)}
+              title={smartSearch ? 'Smart search ON — Claude parses your query' : 'Enable smart AI search'}
+              className="hidden md:flex items-center gap-1 px-2 text-xs font-semibold transition-colors"
+              style={{ color: smartSearch ? '#7c3aed' : '#9ca3af' }}
+            >
+              {smartSearching ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              AI
+            </button>
             <div className="hidden md:flex items-center">
               <div className="w-px h-5 bg-gray-300" />
               <input
@@ -279,18 +375,34 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
         </nav>
       </div>
 
-      {/* ── Category nav bar ── */}
+      {/* ── Category nav bar with mega dropdown ── */}
       <div className="border-t border-gray-200" style={{ backgroundColor: '#0D475C' }}>
         <div className="max-w-7xl mx-auto px-4 overflow-x-auto">
           <div className="flex whitespace-nowrap">
             {NAV_ITEMS.map(item => (
-              <Link
-                key={item.slug}
-                href={`/browse?category=${item.slug}`}
-                className="text-xs font-semibold text-white px-4 py-3 hover:bg-white/10 transition-colors block"
-              >
-                {item.label}
-              </Link>
+              <div key={item.slug} className="group relative">
+                <Link
+                  href={`/browse?category=${item.slug}`}
+                  className="text-xs font-semibold text-white px-4 py-3 hover:bg-white/10 transition-colors block"
+                >
+                  {item.label}
+                </Link>
+                <div
+                  className="absolute left-0 top-full hidden group-hover:block bg-white shadow-lg rounded-b-lg z-50 min-w-[220px] py-2 border"
+                  style={{ borderColor: '#dbdadb' }}
+                >
+                  {item.sub.map(s => (
+                    <Link
+                      key={s.slug}
+                      href={`/browse?category=${item.slug}&q=${encodeURIComponent(s.label)}`}
+                      className="block px-4 py-2 text-xs font-medium hover:bg-gray-50 transition-colors"
+                      style={{ color: '#0D475C' }}
+                    >
+                      {s.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

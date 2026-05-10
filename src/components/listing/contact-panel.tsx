@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Heart, Lock, Loader2 } from 'lucide-react'
+import { MessageCircle, Heart, Lock, Loader2, Share2, Flag, Check } from 'lucide-react'
 
 interface ContactPanelProps {
   listingId: string
@@ -21,6 +21,36 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [shared, setShared] = useState(false)
+  const [reported, setReported] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+
+  async function handleShare() {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({ url, title: sellerName })
+        return
+      } catch {
+        // fall through to copy
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setShared(true)
+      setTimeout(() => setShared(false), 2000)
+    } catch {
+      // ignore
+    }
+  }
+
+  function submitReport() {
+    if (!reportReason.trim()) return
+    setReported(true)
+    setReportOpen(false)
+    setTimeout(() => setReported(false), 3000)
+  }
 
   function requireAuth(action: () => void) {
     if (!isAuthenticated) {
@@ -112,6 +142,62 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
           </Link>
           {' '}to reply or save
         </p>
+      )}
+
+      <div className="flex gap-2 mt-3">
+        <button
+          onClick={handleShare}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-semibold border hover:bg-gray-50 transition-colors"
+          style={{ borderColor: '#dbdadb', color: '#0D475C' }}
+        >
+          {shared ? <Check size={13} /> : <Share2 size={13} />}
+          {shared ? 'Link copied' : 'Share'}
+        </button>
+        <button
+          onClick={() => requireAuth(() => setReportOpen(true))}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-semibold border hover:bg-gray-50 transition-colors"
+          style={{ borderColor: '#dbdadb', color: '#b91c1c' }}
+        >
+          <Flag size={13} />
+          {reported ? 'Reported' : 'Report'}
+        </button>
+      </div>
+
+      {reported && (
+        <p className="text-xs text-center text-green-600 mt-2">Thanks — our team will review.</p>
+      )}
+
+      {reportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl">
+            <h3 className="font-bold text-base mb-3" style={{ color: '#0D475C' }}>Report this ad</h3>
+            <textarea
+              rows={4}
+              value={reportReason}
+              onChange={e => setReportReason(e.target.value)}
+              placeholder="Tell us what's wrong (scam, prohibited item, miscategorised, etc.)"
+              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none resize-none mb-3"
+              style={{ borderColor: '#dbdadb' }}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReportOpen(false)}
+                className="flex-1 py-2.5 rounded border text-sm font-medium text-gray-600 hover:bg-gray-50"
+                style={{ borderColor: '#dbdadb' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReport}
+                disabled={!reportReason.trim()}
+                className="flex-1 py-2.5 rounded text-white text-sm font-bold disabled:opacity-60"
+                style={{ backgroundColor: '#e75462' }}
+              >
+                Submit report
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {messageOpen && (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
@@ -51,6 +52,13 @@ export default function MyAdActions({ listingId, status }: MyAdActionsProps) {
 
   return (
     <div className="flex items-center gap-2 mt-3 text-xs">
+      <Link
+        href={`/account/my-ads/${listingId}/edit`}
+        className="px-3 py-1.5 rounded border font-medium hover:bg-gray-50"
+        style={{ borderColor: '#dbdadb', color: '#0D475C' }}
+      >
+        Edit
+      </Link>
       {status === 'active' && (
         <button
           onClick={() => setStatus('sold')}

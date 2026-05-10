@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 import { ListingCard } from '@/components/listings/listing-card'
 import { ListingCardSkeleton } from '@/components/listings/listing-card-skeleton'
 import FilterSidebar from '@/components/filters/filter-sidebar'
 import SortDropdown from '@/components/browse/sort-dropdown'
+import ViewToggle from '@/components/browse/view-toggle'
 import { mockListings } from '@/lib/data/mock-listings'
 import { createClient } from '@/lib/supabase/server'
 import { Listing } from '@/types'
@@ -17,7 +19,11 @@ interface SP {
   conditions?: string
   urgent?: string
   sort?: string
+  page?: string
+  view?: string
 }
+
+const PAGE_SIZE = 20
 
 async function fetchFromDb(params: SP): Promise<Listing[] | null> {
   try {
@@ -139,6 +145,16 @@ function sortListings(rows: Listing[], sort?: string): Listing[] {
   return out
 }
 
+function pageNumbers(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const out: (number | '…')[] = [1]
+  if (current > 3) out.push('…')
+  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) out.push(p)
+  if (current < total - 2) out.push('…')
+  out.push(total)
+  return out
+}
+
 function pageTitle(params: SP): string {
   if (params.q && params.location) return `"${params.q}" in ${params.location}`
   if (params.q) return `"${params.q}"`
@@ -159,12 +175,52 @@ export default async function BrowsePage({
   const merged = dbListings
     ? [...dbListings, ...mockMatches.filter(m => !dbListings.some(d => d.id === m.id))]
     : mockMatches
-  const listings = sortListings(merged, params.sort)
+  const sorted = sortListings(merged, params.sort)
+  const totalCount = sorted.length
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const currentPage = Math.min(Math.max(1, Number(params.page ?? 1) || 1), totalPages)
+  const start = (currentPage - 1) * PAGE_SIZE
+  const listings = sorted.slice(start, start + PAGE_SIZE)
   const sort = params.sort ?? 'newest'
+  const view: 'grid' | 'list' = params.view === 'list' ? 'list' : 'grid'
+
+  function pageHref(p: number) {
+    const sp = new URLSearchParams()
+    if (params.q) sp.set('q', params.q)
+    if (params.category) sp.set('category', params.category)
+    if (params.location) sp.set('location', params.location)
+    if (params.min_price) sp.set('min_price', params.min_price)
+    if (params.max_price) sp.set('max_price', params.max_price)
+    if (params.conditions) sp.set('conditions', params.conditions)
+    if (params.urgent) sp.set('urgent', params.urgent)
+    if (params.sort) sp.set('sort', params.sort)
+    sp.set('page', String(p))
+    return `/browse?${sp.toString()}`
+  }
 
   return (
     <div style={{ backgroundColor: '#f1f1f1', minHeight: '100vh' }}>
-      {/* ── Results header bar ── */}
+      <div className="bg-white border-b" style={{ borderColor: '#dbdadb' }}>
+        <div className="max-w-7xl mx-auto px-4 py-2.5">
+          <nav className="flex items-center gap-1 text-xs text-gray-400">
+            <Link href="/" className="hover:underline" style={{ color: '#0D475C' }}>Home</Link>
+            <ChevronRight size={12} />
+            <Link href="/browse" className="hover:underline" style={{ color: '#0D475C' }}>Browse</Link>
+            {params.category && (
+              <>
+                <ChevronRight size={12} />
+                <span className="text-gray-400 capitalize">{params.category.replace(/-/g, ' ')}</span>
+              </>
+            )}
+            {params.q && (
+              <>
+                <ChevronRight size={12} />
+                <span className="text-gray-400">&quot;{params.q}&quot;</span>
+              </>
+            )}
+          </nav>
+        </div>
+      </div>
       <div className="bg-white border-b" style={{ borderColor: '#dbdadb' }}>
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -173,11 +229,15 @@ export default async function BrowsePage({
                 {pageTitle(params)}
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
-                {listings.length} {listings.length === 1 ? 'ad' : 'ads'} found
+                {totalCount} {totalCount === 1 ? 'ad' : 'ads'} found
                 {params.location ? ` · ${params.location}` : ' · United Kingdom'}
+                {totalPages > 1 && ` · page ${currentPage} of ${totalPages}`}
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Suspense fallback={<div className="w-16 h-8 bg-gray-100 rounded animate-pulse" />}>
+                <ViewToggle current={view} />
+              </Suspense>
               <span className="text-xs text-gray-400 hidden sm:block">Sort by:</span>
               <Suspense fallback={<div className="w-36 h-8 bg-gray-100 rounded animate-pulse" />}>
                 <SortDropdown current={sort} />
@@ -228,28 +288,50 @@ export default async function BrowsePage({
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className={view === 'list' ? 'flex flex-col gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3'}>
                   {listings.map(l => (
-                    <ListingCard key={l.id} listing={l} />
+                    <ListingCard key={l.id} listing={l} variant={view} />
                   ))}
                 </div>
 
-                {/* Pagination stub */}
-                {listings.length >= 12 && (
-                  <div className="flex justify-center mt-8 gap-1">
-                    {[1, 2, 3, '...', 12].map((p, i) => (
-                      <button
-                        key={i}
-                        className="w-9 h-9 rounded text-sm font-medium border transition-colors"
-                        style={
-                          p === 1
-                            ? { backgroundColor: '#0D475C', color: '#fff', borderColor: '#0D475C' }
-                            : { backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }
-                        }
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-8 gap-1 flex-wrap">
+                    {currentPage > 1 && (
+                      <Link
+                        href={pageHref(currentPage - 1)}
+                        className="px-3 h-9 rounded text-sm font-medium border flex items-center"
+                        style={{ backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }}
                       >
-                        {p}
-                      </button>
-                    ))}
+                        Prev
+                      </Link>
+                    )}
+                    {pageNumbers(currentPage, totalPages).map((p, i) =>
+                      typeof p === 'number' ? (
+                        <Link
+                          key={i}
+                          href={pageHref(p)}
+                          className="w-9 h-9 rounded text-sm font-medium border flex items-center justify-center"
+                          style={
+                            p === currentPage
+                              ? { backgroundColor: '#0D475C', color: '#fff', borderColor: '#0D475C' }
+                              : { backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }
+                          }
+                        >
+                          {p}
+                        </Link>
+                      ) : (
+                        <span key={i} className="w-9 h-9 flex items-center justify-center text-sm text-gray-400">…</span>
+                      )
+                    )}
+                    {currentPage < totalPages && (
+                      <Link
+                        href={pageHref(currentPage + 1)}
+                        className="px-3 h-9 rounded text-sm font-medium border flex items-center"
+                        style={{ backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }}
+                      >
+                        Next
+                      </Link>
+                    )}
                   </div>
                 )}
               </>
