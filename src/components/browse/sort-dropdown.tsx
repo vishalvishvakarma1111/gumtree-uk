@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-
+ 
 export default function SortDropdown({ current }: { current: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
