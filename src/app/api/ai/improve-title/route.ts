@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { anthropic } from '@/lib/claude'
+import { anthropic, claudeErrorResponse } from '@/lib/claude'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -42,6 +42,6 @@ Rules:
     return NextResponse.json({ suggestions })
   } catch (error) {
     console.error('improve-title error:', error)
-    return NextResponse.json({ error: 'Failed to improve title' }, { status: 500 })
+    return claudeErrorResponse(error, 'Failed to improve title')
   }
 }

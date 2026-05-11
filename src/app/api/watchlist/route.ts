@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -29,12 +31,15 @@ export async function POST(req: NextRequest) {
 
     const { listing_id } = await req.json()
     if (!listing_id) return NextResponse.json({ error: 'listing_id required' }, { status: 400 })
+    if (!UUID_RE.test(String(listing_id))) {
+      return NextResponse.json({ error: 'This is a demo listing — only real ads can be saved.' }, { status: 400 })
+    }
 
     const { error } = await supabase
       .from('watchlist')
-      .insert({ user_id: user.id, listing_id })
+      .upsert({ user_id: user.id, listing_id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true })
 
-    if (error && !error.message.includes('duplicate')) throw error
+    if (error) throw error
     return NextResponse.json({ saved: true })
   } catch (error) {
     console.error('Watchlist POST error:', error)
@@ -50,6 +55,9 @@ export async function DELETE(req: NextRequest) {
 
     const listing_id = req.nextUrl.searchParams.get('listing_id')
     if (!listing_id) return NextResponse.json({ error: 'listing_id required' }, { status: 400 })
+    if (!UUID_RE.test(listing_id)) {
+      return NextResponse.json({ error: 'Invalid listing_id' }, { status: 400 })
+    }
 
     const { error } = await supabase
       .from('watchlist')

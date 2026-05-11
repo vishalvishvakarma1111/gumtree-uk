@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { anthropic } from '@/lib/claude'
+import { anthropic, claudeErrorResponse } from '@/lib/claude'
 
 const CATEGORY_SLUGS = [
   'cars-vehicles', 'property', 'jobs', 'electronics', 'home-garden', 'pets',
@@ -67,6 +67,6 @@ Rules:
     })
   } catch (error) {
     console.error('parse-search error:', error)
-    return NextResponse.json({ error: 'Failed to parse query' }, { status: 500 })
+    return claudeErrorResponse(error, 'Failed to parse query')
   }
 }

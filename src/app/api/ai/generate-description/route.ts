@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { anthropic } from '@/lib/claude'
+import { anthropic, claudeErrorResponse } from '@/lib/claude'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -40,6 +40,6 @@ Keep it under 150 words.`,
     return NextResponse.json({ description })
   } catch (error) {
     console.error('Claude API error:', error)
-    return NextResponse.json({ error: 'Failed to generate description' }, { status: 500 })
+    return claudeErrorResponse(error, 'Failed to generate description')
   }
 }

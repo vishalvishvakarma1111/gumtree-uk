@@ -12,8 +12,11 @@ interface ContactPanelProps {
   initialSaved?: boolean
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default function ContactPanel({ listingId, sellerName, isAuthenticated, initialSaved = false }: ContactPanelProps) {
   const router = useRouter()
+  const isDemo = !UUID_RE.test(listingId)
   const [saved, setSaved] = useState(initialSaved)
   const [savingPending, setSavingPending] = useState(false)
   const [messageOpen, setMessageOpen] = useState(false)
@@ -27,6 +30,7 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
   const [reportReason, setReportReason] = useState('')
   const [reportError, setReportError] = useState('')
   const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [savedError, setSavedError] = useState('')
 
   async function handleShare() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
@@ -80,23 +84,29 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
 
   async function toggleSaved() {
     if (savingPending) return
+    if (isDemo) {
+      setSavedError('Demo listing — only real ads can be saved.')
+      return
+    }
     setSavingPending(true)
+    setSavedError('')
     const next = !saved
     setSaved(next)
     try {
-      if (next) {
-        const res = await fetch('/api/watchlist', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ listing_id: listingId }),
-        })
-        if (!res.ok) throw new Error()
-      } else {
-        const res = await fetch(`/api/watchlist?listing_id=${listingId}`, { method: 'DELETE' })
-        if (!res.ok) throw new Error()
-      }
-    } catch {
+      const res = next
+        ? await fetch('/api/watchlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ listing_id: listingId }),
+          })
+        : await fetch(`/api/watchlist?listing_id=${listingId}`, { method: 'DELETE' })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+    } catch (err: unknown) {
       setSaved(!next)
+      setSavedError(err instanceof Error ? err.message : 'Failed to update watchlist')
+      console.error('Watchlist toggle failed:', err)
     } finally {
       setSavingPending(false)
     }
@@ -151,6 +161,10 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
         <Heart size={15} fill={saved ? 'white' : 'none'} />
         {saved ? 'Saved to watchlist' : 'Save to watchlist'}
       </button>
+
+      {savedError && (
+        <p className="text-xs text-red-500 mt-2 text-center">{savedError}</p>
+      )}
 
       {!isAuthenticated && (
         <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mt-3">

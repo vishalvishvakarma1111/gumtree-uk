@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { anthropic } from '@/lib/claude'
+import { anthropic, claudeErrorResponse } from '@/lib/claude'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
@@ -45,6 +45,6 @@ Respond ONLY in JSON, no markdown fence, no commentary, like:
     })
   } catch (error) {
     console.error('suggest-price error:', error)
-    return NextResponse.json({ error: 'Failed to suggest price' }, { status: 500 })
+    return claudeErrorResponse(error, 'Failed to suggest price')
   }
 }
