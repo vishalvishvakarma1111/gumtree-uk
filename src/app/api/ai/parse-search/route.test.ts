@@ -34,7 +34,7 @@ describe('POST /api/ai/parse-search', () => {
       content: [
         {
           type: 'text',
-          text: '{"keyword":"iphone","min_price":null,"max_price":200,"location":"London","category":"for-sale"}',
+          text: '{"keyword":"iphone","min_price":null,"max_price":200,"location":"London","category":"electronics"}',
         },
       ],
     })
@@ -45,7 +45,7 @@ describe('POST /api/ai/parse-search', () => {
     expect(data.keyword).toBe('iphone')
     expect(data.max_price).toBe(200)
     expect(data.location).toBe('London')
-    expect(data.category).toBe('for-sale')
+    expect(data.category).toBe('electronics')
   })
 
   it('strips markdown fences', async () => {

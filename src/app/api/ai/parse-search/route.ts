@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { anthropic } from '@/lib/claude'
 
 const CATEGORY_SLUGS = [
-  'cars-vehicles', 'for-sale', 'services', 'property', 'pets', 'jobs', 'community',
+  'cars-vehicles', 'property', 'jobs', 'electronics', 'home-garden', 'pets',
+  'fashion', 'sport-leisure', 'kids-baby', 'community', 'services',
+  'business-industrial', 'other',
 ]
 
 export async function POST(req: NextRequest) {

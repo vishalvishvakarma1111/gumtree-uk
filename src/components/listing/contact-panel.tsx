@@ -25,6 +25,8 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
   const [reported, setReported] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [reportReason, setReportReason] = useState('')
+  const [reportError, setReportError] = useState('')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
 
   async function handleShare() {
     const url = typeof window !== 'undefined' ? window.location.href : ''
@@ -46,25 +48,25 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
   }
 
   async function submitReport() {
-    if (!reportReason.trim()) return
+    if (!reportReason.trim() || reportSubmitting) return
+    setReportSubmitting(true)
+    setReportError('')
     try {
       const res = await fetch(`/api/listings/${listingId}/report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reportReason }),
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed')
-      }
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to submit report')
       setReported(true)
       setReportOpen(false)
       setReportReason('')
       setTimeout(() => setReported(false), 4000)
-    } catch {
-      // surface minimal feedback; details ignored to keep panel simple
-      setReported(false)
-      setReportOpen(false)
+    } catch (err: unknown) {
+      setReportError(err instanceof Error ? err.message : 'Failed to submit report')
+    } finally {
+      setReportSubmitting(false)
     }
   }
 
@@ -195,9 +197,10 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
               className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none resize-none mb-3"
               style={{ borderColor: '#dbdadb' }}
             />
+            {reportError && <p className="text-xs text-red-500 mb-2">{reportError}</p>}
             <div className="flex gap-3">
               <button
-                onClick={() => setReportOpen(false)}
+                onClick={() => { setReportOpen(false); setReportError('') }}
                 className="flex-1 py-2.5 rounded border text-sm font-medium text-gray-600 hover:bg-gray-50"
                 style={{ borderColor: '#dbdadb' }}
               >
@@ -205,11 +208,12 @@ export default function ContactPanel({ listingId, sellerName, isAuthenticated, i
               </button>
               <button
                 onClick={submitReport}
-                disabled={!reportReason.trim()}
-                className="flex-1 py-2.5 rounded text-white text-sm font-bold disabled:opacity-60"
+                disabled={!reportReason.trim() || reportSubmitting}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded text-white text-sm font-bold disabled:opacity-60"
                 style={{ backgroundColor: '#e75462' }}
               >
-                Submit report
+                {reportSubmitting && <Loader2 size={14} className="animate-spin" />}
+                {reportSubmitting ? 'Submitting…' : 'Submit report'}
               </button>
             </div>
           </div>

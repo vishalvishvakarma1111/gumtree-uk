@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings, Sparkles, Loader2, Shield } from 'lucide-react'
+import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings, Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS: { label: string; slug: string; sub: { label: string; slug: string }[] }[] = [
@@ -92,8 +92,23 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unread, setUnread] = useState(unreadMessages)
-  const [smartSearch, setSmartSearch] = useState(false)
+  const [smartSearch, setSmartSearchState] = useState(false)
   const [smartSearching, setSmartSearching] = useState(false)
+  const [smartError, setSmartError] = useState('')
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('smartSearch') === '1') setSmartSearchState(true)
+    } catch { /* ignore */ }
+  }, [])
+
+  function setSmartSearch(updater: (prev: boolean) => boolean) {
+    setSmartSearchState(prev => {
+      const next = updater(prev)
+      try { localStorage.setItem('smartSearch', next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
+  }
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -147,6 +162,7 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
+    setSmartError('')
     if (smartSearch && query.trim()) {
       setSmartSearching(true)
       try {
@@ -168,10 +184,13 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
           router.push(`/browse?${params.toString()}`)
           return
         }
-      } catch {
-        // fall through to normal search
+        const errBody = await res.json().catch(() => ({}))
+        setSmartError(errBody.error || `AI search failed (HTTP ${res.status})`)
+      } catch (err: unknown) {
+        setSmartError(err instanceof Error ? err.message : 'AI search failed — check server logs')
       }
       setSmartSearching(false)
+      return
     }
     const params = new URLSearchParams()
     if (query) params.set('q', query)
@@ -216,19 +235,9 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder={smartSearch ? 'Try "cheap iPhone under £200 in London"' : 'What are you looking for?'}
+              placeholder="What are you looking for?"
               className="flex-1 px-3 py-2 text-sm outline-none text-gray-800"
             />
-            <button
-              type="button"
-              onClick={() => setSmartSearch(s => !s)}
-              title={smartSearch ? 'Smart search ON — Claude parses your query' : 'Enable smart AI search'}
-              className="hidden md:flex items-center gap-1 px-2 text-xs font-semibold transition-colors"
-              style={{ color: smartSearch ? '#7c3aed' : '#9ca3af' }}
-            >
-              {smartSearching ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              AI
-            </button>
             <div className="hidden md:flex items-center">
               <div className="w-px h-5 bg-gray-300" />
               <input
@@ -248,6 +257,11 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
             Search
           </button>
         </form>
+        {smartError && (
+          <p className="text-xs text-red-500 ml-2 hidden md:block max-w-xs truncate" title={smartError}>
+            {smartError}
+          </p>
+        )}
 
         {/* Right nav */}
         <nav className="flex items-center gap-2 flex-shrink-0 ml-auto">
