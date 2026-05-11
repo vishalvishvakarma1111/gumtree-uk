@@ -152,10 +152,12 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
       if (document.visibilityState === 'visible') refresh()
     }
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('unread-changed', refresh)
 
     return () => {
       supabase.removeChannel(channel)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('unread-changed', refresh)
     }
   }, [user])
 

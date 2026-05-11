@@ -50,7 +50,7 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t mt-8" style={{ borderColor: '#dbdadb' ,backgroundColor: '#3c3241'}}>
+    <footer className="border-t mt-8" style={{ borderColor: '#2a232e', backgroundColor: '#3c3241' }}>
       {/* Main footer links */}
       <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -58,7 +58,7 @@ export default function Footer() {
             <div key={col.title}>
               <h4
                 className="text-sm font-bold mb-3"
-                style={{ color: '#0D475C' }}
+                style={{ color: '#ffffff' }}
               >
                 {col.title}
               </h4>
@@ -67,8 +67,8 @@ export default function Footer() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-xs hover:underline"
-                      style={{ color: '#b1adb3' }}
+                      className="text-xs hover:underline hover:text-white"
+                      style={{ color: '#dbdadb' }}
                     >
                       {link.label}
                     </Link>
@@ -80,8 +80,8 @@ export default function Footer() {
         </div>
 
         {/* Social */}
-        <div className="mt-8 pt-6 border-t" style={{ borderColor: '#3c3241' }}>
-          <p className="text-xs font-semibold mb-3" style={{ color: '#0D475C' }}>
+        <div className="mt-8 pt-6 border-t" style={{ borderColor: '#5a4d5e' }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: '#ffffff' }}>
             Follow us
           </p>
           <div className="flex gap-3">
@@ -90,8 +90,8 @@ export default function Footer() {
                 key={s.label}
                 href={s.href}
                 aria-label={s.label}
-                className="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-colors hover:bg-gray-50"
-                style={{ borderColor: '#dbdadb', color: '#0D475C' }}
+                className="w-8 h-8 rounded-full border flex items-center justify-center text-xs font-bold transition-colors hover:bg-white/10"
+                style={{ borderColor: '#dbdadb', color: '#ffffff' }}
               >
                 {s.icon}
               </Link>
@@ -101,18 +101,18 @@ export default function Footer() {
       </div>
 
       {/* Legal bar */}
-      <div className="border-t py-4 px-4" style={{ borderColor: '#dbdadb', backgroundColor: '#f1f1f1' }}>
+      <div className="border-t py-4 px-4" style={{ borderColor: '#2a232e', backgroundColor: '#2a232e' }}>
         <div className="max-w-7xl mx-auto">
-          <p className="text-xs mb-2" style={{ color: '#b1adb3' }}>
+          <p className="text-xs mb-2" style={{ color: '#dbdadb' }}>
             © Copyright 2000–{new Date().getFullYear()} Gumtree.com Limited. All rights reserved.
           </p>
-          <p className="text-xs mb-2" style={{ color: '#b1adb3' }}>
+          <p className="text-xs mb-2" style={{ color: '#dbdadb' }}>
             Gumtree.com Limited is an FCA regulated credit broker not a lender.
             Registered in England and Wales No. 03934849. VAT No. 476 0835 68.
           </p>
-          <div className="flex flex-wrap gap-3 text-xs" style={{ color: '#b1adb3' }}>
+          <div className="flex flex-wrap gap-3 text-xs" style={{ color: '#dbdadb' }}>
             {['Terms of Use', 'Privacy Notice', 'Privacy Settings', 'Cookies Policy'].map(item => (
-              <Link key={item} href="#" className="hover:underline">{item}</Link>
+              <Link key={item} href="#" className="hover:underline hover:text-white">{item}</Link>
             ))}
           </div>
         </div>

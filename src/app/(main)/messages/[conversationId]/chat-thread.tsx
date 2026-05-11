@@ -52,6 +52,21 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
+  async function markRead() {
+    try {
+      const res = await fetch(`/api/conversations/${conversationId}/read`, { method: 'POST' })
+      if (!res.ok) return
+      window.dispatchEvent(new CustomEvent('unread-changed'))
+    } catch {
+      // ignore
+    }
+  }
+
+  useEffect(() => {
+    markRead()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId])
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -70,6 +85,9 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
             if (prev.some(m => m.id === incoming.id)) return prev
             return [...prev, incoming]
           })
+          if (incoming.sender_id !== currentUserId) {
+            markRead()
+          }
         }
       )
       .subscribe()
@@ -77,7 +95,8 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [conversationId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, currentUserId])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -137,7 +156,7 @@ export default function ChatThread({ conversationId, currentUserId, initialMessa
                     className="text-[10px] mt-1 opacity-70"
                     style={{ color: mine ? 'rgba(255,255,255,0.8)' : '#9ca3af' }}
                   >
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(m.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </p>
                 </div>
                 {flagged && (

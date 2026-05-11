@@ -219,19 +219,27 @@ export default async function HomePage() {
       {/* ── Popular locations ── */}
       <section className="bg-white border-b py-8 px-4" style={{ borderColor: '#dbdadb' }}>
         <div className="max-w-7xl mx-auto">
-          <h3 className="text-sm font-bold mb-4" style={{ color: '#0D475C' }}>
+          <h3 className="text-sm font-bold mb-4 text-center" style={{ color: '#0D475C' }}>
             Popular locations
           </h3>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {UK_LOCATIONS.map(loc => (
-              <Link
-                key={loc}
-                href={`/browse?location=${loc}`}
-                className="text-sm hover:underline"
-                style={{ color: '#e75462' }}
-              >
-                {loc}
-              </Link>
+          <div className="flex flex-wrap justify-center items-center gap-y-2">
+            {UK_LOCATIONS.map((loc, i) => (
+              <div key={loc} className="flex items-center">
+                <Link
+                  href={`/browse?location=${loc}`}
+                  className="text-lg font-bold hover:underline px-4"
+                  style={{ color: '#007fb0' }}
+                >
+                  {loc}
+                </Link>
+                {i < UK_LOCATIONS.length - 1 && (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block h-5 w-px"
+                    style={{ backgroundColor: '#dbdadb' }}
+                  />
+                )}
+              </div>
             ))}
           </div>
         </div>
