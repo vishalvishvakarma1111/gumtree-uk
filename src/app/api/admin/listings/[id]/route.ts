@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isAdminUser } from '@/lib/admin'
+import { sendEmail, listingApprovedEmail, listingRejectedEmail } from '@/lib/email'
 
 const ALLOWED_STATUSES = ['active', 'pending', 'rejected', 'expired', 'sold', 'draft']
 
@@ -35,12 +36,55 @@ export async function PATCH(
     }
 
     const admin = createServiceClient()
-    const { error } = await admin.from('listings').update(update).eq('id', id)
+    const { data: updated, error } = await admin
+      .from('listings')
+      .update(update)
+      .eq('id', id)
+      .select('id, user_id, title, status, rejection_reason')
+      .maybeSingle<{
+        id: string
+        user_id: string
+        title: string
+        status: string
+        rejection_reason: string | null
+      }>()
     if (error) throw error
+
+    if (updated && (updated.status === 'active' || updated.status === 'rejected')) {
+      notifyOwner(updated).catch(err => console.error('notifyOwner failed:', err))
+    }
 
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Admin listings PATCH error:', error)
     return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
   }
+}
+
+async function notifyOwner(listing: { id: string; user_id: string; title: string; status: string; rejection_reason: string | null }) {
+  const admin = createServiceClient()
+  const { data: profile } = await admin
+    .from('user_profiles')
+    .select('name, email_notifications')
+    .eq('id', listing.user_id)
+    .maybeSingle<{ name: string; email_notifications: boolean }>()
+  if (!profile || profile.email_notifications === false) return
+
+  const { data: authUser } = await admin.auth.admin.getUserById(listing.user_id)
+  const email = authUser?.user?.email
+  if (!email) return
+
+  const tpl = listing.status === 'active'
+    ? listingApprovedEmail({
+        recipientName: profile.name || 'there',
+        listingTitle: listing.title,
+        listingId: listing.id,
+      })
+    : listingRejectedEmail({
+        recipientName: profile.name || 'there',
+        listingTitle: listing.title,
+        reason: listing.rejection_reason,
+      })
+
+  await sendEmail({ to: email, ...tpl })
 }

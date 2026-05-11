@@ -13,6 +13,7 @@ interface ProfileFormProps {
     bio: string
     avatar_url: string
     phone: string
+    email_notifications: boolean
   }
 }
 
@@ -23,6 +24,7 @@ export default function ProfileForm({ email, initial }: ProfileFormProps) {
   const [bio, setBio] = useState(initial.bio)
   const [phone, setPhone] = useState(initial.phone)
   const [avatarUrl, setAvatarUrl] = useState(initial.avatar_url)
+  const [emailNotifications, setEmailNotifications] = useState(initial.email_notifications)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -56,7 +58,7 @@ export default function ProfileForm({ email, initial }: ProfileFormProps) {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, location, bio, phone, avatar_url: avatarUrl || null }),
+        body: JSON.stringify({ name, location, bio, phone, avatar_url: avatarUrl || null, email_notifications: emailNotifications }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -155,6 +157,21 @@ export default function ProfileForm({ email, initial }: ProfileFormProps) {
           />
           <p className="text-xs text-gray-400 mt-1">{bio.length}/500</p>
         </Field>
+
+        <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50" style={{ borderColor: '#dbdadb' }}>
+          <input
+            type="checkbox"
+            checked={emailNotifications}
+            onChange={e => setEmailNotifications(e.target.checked)}
+            className="mt-0.5"
+          />
+          <div className="text-sm">
+            <p className="font-semibold" style={{ color: '#0D475C' }}>Email notifications</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Receive emails for new messages, report outcomes, and ad moderation updates.
+            </p>
+          </div>
+        </label>
 
         {message && (
           <p className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>

@@ -4,7 +4,7 @@ import ProfileForm from './profile-form'
 
 export default async function ProfilePage() {
   let email = ''
-  let profile = { name: '', location: '', bio: '', avatar_url: '', phone: '' }
+  let profile = { name: '', location: '', bio: '', avatar_url: '', phone: '', email_notifications: true }
 
   try {
     const supabase = await createClient()
@@ -14,7 +14,7 @@ export default async function ProfilePage() {
 
     const { data } = await supabase
       .from('user_profiles')
-      .select('name, location, bio, avatar_url, phone')
+      .select('name, location, bio, avatar_url, phone, email_notifications')
       .eq('id', user.id)
       .maybeSingle()
     if (data) {
@@ -24,6 +24,7 @@ export default async function ProfilePage() {
         bio: data.bio ?? '',
         avatar_url: data.avatar_url ?? '',
         phone: data.phone ?? '',
+        email_notifications: data.email_notifications ?? true,
       }
     }
   } catch {

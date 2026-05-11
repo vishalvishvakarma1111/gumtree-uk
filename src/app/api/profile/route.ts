@@ -14,6 +14,7 @@ export async function PATCH(req: NextRequest) {
     if (body.bio !== undefined) update.bio = String(body.bio).slice(0, 500)
     if (body.avatar_url !== undefined) update.avatar_url = body.avatar_url
     if (body.phone !== undefined) update.phone = body.phone
+    if (body.email_notifications !== undefined) update.email_notifications = Boolean(body.email_notifications)
 
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

@@ -134,6 +134,9 @@ export default async function MyAdsPage({
                 <div className="flex items-center gap-3 mt-2 text-xs text-gray-400">
                   <span className="flex items-center gap-1"><Eye size={11} /> {l.views_count} views</span>
                   <span className="flex items-center gap-1"><Clock size={11} /> {timeAgo(l.created_at)}</span>
+                  {l.status === 'active' && l.expires_at && (
+                    <ExpiryHint expiresAt={l.expires_at} />
+                  )}
                 </div>
                 <MyAdActions listingId={l.id} status={l.status} />
               </div>
@@ -142,6 +145,21 @@ export default async function MyAdsPage({
         </div>
       )}
     </div>
+  )
+}
+
+function ExpiryHint({ expiresAt }: { expiresAt: string }) {
+  const ms = new Date(expiresAt).getTime() - Date.now()
+  const days = Math.ceil(ms / (24 * 60 * 60 * 1000))
+  if (days <= 0) return null
+  const urgent = days <= 7
+  return (
+    <span
+      className="flex items-center gap-1"
+      style={{ color: urgent ? '#b45309' : '#9ca3af' }}
+    >
+      <Clock size={11} /> expires in {days}{days === 1 ? ' day' : ' days'}
+    </span>
   )
 }
 

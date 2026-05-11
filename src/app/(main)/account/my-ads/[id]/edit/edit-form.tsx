@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Upload, X, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface ListingShape {
   id: string
@@ -198,15 +198,51 @@ export default function EditListingForm({ listing }: { listing: ListingShape }) 
       <Field label="Photos">
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {photos.map((url, i) => (
-            <div key={url} className="relative aspect-square rounded-lg overflow-hidden border" style={{ borderColor: '#dbdadb' }}>
+            <div key={url} className="relative aspect-square rounded-lg overflow-hidden border group" style={{ borderColor: '#dbdadb' }}>
               <Image src={url} alt="" fill className="object-cover" />
+              {i === 0 && (
+                <span className="absolute top-1 left-1 text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ backgroundColor: '#0D475C' }}>
+                  Main
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setPhotos(p => p.filter((_, idx) => idx !== i))}
                 className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
+                aria-label="Remove photo"
               >
                 <X size={11} />
               </button>
+              <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => setPhotos(p => {
+                    const next = [...p]
+                    if (i === 0) return next
+                    ;[next[i], next[i - 1]] = [next[i - 1], next[i]]
+                    return next
+                  })}
+                  disabled={i === 0}
+                  className="w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/90"
+                  aria-label="Move photo left"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotos(p => {
+                    const next = [...p]
+                    if (i === next.length - 1) return next
+                    ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                    return next
+                  })}
+                  disabled={i === photos.length - 1}
+                  className="w-6 h-6 rounded-full bg-black/70 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/90"
+                  aria-label="Move photo right"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
             </div>
           ))}
           {photos.length < 10 && (

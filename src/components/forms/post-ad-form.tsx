@@ -151,8 +151,8 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
         })
       )
       setPhotos(p => [...p, ...results])
-    } catch {
-      // silently ignore upload errors for demo
+    } catch (err: unknown) {
+      setErrors(er => ({ ...er, photos: err instanceof Error ? err.message : 'Photo upload failed' }))
     } finally {
       setUploadingPhoto(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -161,6 +161,16 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
 
   function removePhoto(idx: number) {
     setPhotos(p => p.filter((_, i) => i !== idx))
+  }
+
+  function movePhoto(idx: number, direction: -1 | 1) {
+    setPhotos(p => {
+      const next = [...p]
+      const target = idx + direction
+      if (target < 0 || target >= next.length) return next
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
   }
 
   function validateStep(): boolean {
@@ -430,7 +440,7 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
               </p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
                 {photos.map((url, idx) => (
-                  <div key={url} className="relative aspect-square rounded-lg overflow-hidden border" style={{ borderColor: '#dbdadb' }}>
+                  <div key={url} className="relative aspect-square rounded-lg overflow-hidden border group" style={{ borderColor: '#dbdadb' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                     {idx === 0 && (
@@ -442,9 +452,30 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
                       type="button"
                       onClick={() => removePhoto(idx)}
                       className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
+                      aria-label="Remove photo"
                     >
                       <X size={11} />
                     </button>
+                    <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, -1)}
+                        disabled={idx === 0}
+                        className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
+                        aria-label="Move photo left"
+                      >
+                        <ChevronLeft size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(idx, 1)}
+                        disabled={idx === photos.length - 1}
+                        className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
+                        aria-label="Move photo right"
+                      >
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
                   </div>
                 ))}
 
@@ -472,6 +503,7 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
+              {errors.photos && <p className="text-xs text-red-500 mb-2">{errors.photos}</p>}
               {photos.length === 0 && (
                 <div
                   className="rounded-lg p-6 text-center border-2 border-dashed cursor-pointer hover:border-gray-400 transition-colors"

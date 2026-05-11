@@ -34,6 +34,21 @@ export default function MyAdActions({ listingId, status }: MyAdActionsProps) {
     }
   }
 
+  async function renew() {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/listings/${listingId}/renew`, { method: 'POST' })
+      if (!res.ok) throw new Error()
+      router.refresh()
+    } catch {
+      setError('Failed to renew')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function remove() {
     if (busy) return
     if (!confirm('Delete this listing? This cannot be undone.')) return
@@ -77,6 +92,16 @@ export default function MyAdActions({ listingId, status }: MyAdActionsProps) {
           style={{ borderColor: '#dbdadb', color: '#0D475C' }}
         >
           Relist
+        </button>
+      )}
+      {status === 'expired' && (
+        <button
+          onClick={renew}
+          disabled={busy}
+          className="px-3 py-1.5 rounded font-medium text-white disabled:opacity-60"
+          style={{ backgroundColor: '#0D475C' }}
+        >
+          Renew for 30 days
         </button>
       )}
       <button
