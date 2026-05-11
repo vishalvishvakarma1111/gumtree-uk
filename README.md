@@ -39,7 +39,8 @@ search parsing.
   location → review
 - Account: My Ads (Pending / Active / Sold / Rejected / Drafts / Expired tabs),
   Edit listing, Watchlist, Reviews received, Public profile, Profile + password change
-- Admin panel at `/admin` (single hardcoded admin via `ADMIN_EMAIL`):
+- Admin panel at `/admin` (gated by the `user_profiles.is_admin` flag —
+  promote via SQL only, see `supabase/migrations/007_admin_user_flag.sql`):
   approve/reject pending listings, triage reports, take down ads
 - Messaging: inbox, chat thread, real-time delivery, unread badge in header
 - Public seller profile at `/users/[id]`
@@ -87,7 +88,15 @@ Copy `.env.example` to `.env.local` and fill in:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY`  | Supabase project settings → API → `anon public` key   |
 | `SUPABASE_SERVICE_ROLE_KEY`      | Supabase project settings → API → `service_role` key  |
 | `ANTHROPIC_API_KEY`              | [console.anthropic.com](https://console.anthropic.com) |
-| `ADMIN_EMAIL`                    | The single user email allowed to access `/admin`      |
+
+Admin access is controlled by the `user_profiles.is_admin` database
+flag, not an env var. Promote a user with SQL:
+
+```sql
+UPDATE user_profiles
+  SET is_admin = true
+  WHERE id = (SELECT id FROM auth.users WHERE lower(email) = lower('you@example.com'));
+```
 
 ### 4. Run
 

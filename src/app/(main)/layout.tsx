@@ -15,7 +15,7 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         id: u.id,
         email: u.email ?? '',
         name: (u.user_metadata?.name as string) || u.email?.split('@')[0] || 'You',
-        isAdmin: isAdminUser(u),
+        isAdmin: await isAdminUser(supabase, u.id),
       }
 
       const { data: convos } = await supabase

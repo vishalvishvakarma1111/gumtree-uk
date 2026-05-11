@@ -14,7 +14,7 @@ export async function PATCH(
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-    if (!isAdminUser(user)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!(await isAdminUser(supabase, user.id))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id } = await params
     const body = await req.json()

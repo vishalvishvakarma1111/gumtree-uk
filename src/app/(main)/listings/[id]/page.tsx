@@ -97,7 +97,7 @@ export default async function ListingDetailPage({
   const supabaseAuth = await createClient()
   const { data: { user: viewer } } = await supabaseAuth.auth.getUser()
   const isOwner = !!viewer && viewer.id === listing.user_id
-  const isAdmin = isAdminUser(viewer)
+  const isAdmin = await isAdminUser(supabaseAuth, viewer?.id)
   if (listing.status !== 'active' && !isOwner && !isAdmin) {
     notFound()
   }

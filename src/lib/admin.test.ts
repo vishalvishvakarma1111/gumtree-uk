@@ -1,50 +1,44 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { isAdminUser } from './admin'
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-function user(email: string | undefined): User {
-  return { id: 'u1', email, app_metadata: {}, user_metadata: {}, aud: 'authenticated', created_at: '' } as unknown as User
+type MaybeSingleResult = { data: { is_admin: boolean } | null; error: unknown }
+
+function mockClient(result: MaybeSingleResult): SupabaseClient {
+  const maybeSingle = vi.fn().mockResolvedValue(result)
+  const eq = vi.fn().mockReturnValue({ maybeSingle })
+  const select = vi.fn().mockReturnValue({ eq })
+  const from = vi.fn().mockReturnValue({ select })
+  return { from } as unknown as SupabaseClient
 }
 
 describe('isAdminUser', () => {
-  const PRIOR = process.env.ADMIN_EMAIL
-
-  beforeEach(() => {
-    process.env.ADMIN_EMAIL = 'admin@example.com'
+  it('returns false when userId is null or undefined', async () => {
+    const supabase = mockClient({ data: null, error: null })
+    expect(await isAdminUser(supabase, null)).toBe(false)
+    expect(await isAdminUser(supabase, undefined)).toBe(false)
+    // Short-circuits before hitting the DB
+    expect(supabase.from).not.toHaveBeenCalled()
   })
 
-  afterEach(() => {
-    process.env.ADMIN_EMAIL = PRIOR
+  it('returns true when is_admin flag is true', async () => {
+    const supabase = mockClient({ data: { is_admin: true }, error: null })
+    expect(await isAdminUser(supabase, 'user-1')).toBe(true)
+    expect(supabase.from).toHaveBeenCalledWith('user_profiles')
   })
 
-  it('returns false for null user', () => {
-    expect(isAdminUser(null)).toBe(false)
-    expect(isAdminUser(undefined)).toBe(false)
+  it('returns false when is_admin flag is false', async () => {
+    const supabase = mockClient({ data: { is_admin: false }, error: null })
+    expect(await isAdminUser(supabase, 'user-1')).toBe(false)
   })
 
-  it('returns false when user has no email', () => {
-    expect(isAdminUser(user(undefined))).toBe(false)
+  it('returns false when profile row is missing', async () => {
+    const supabase = mockClient({ data: null, error: null })
+    expect(await isAdminUser(supabase, 'user-1')).toBe(false)
   })
 
-  it('returns true on exact email match', () => {
-    expect(isAdminUser(user('admin@example.com'))).toBe(true)
-  })
-
-  it('case- and whitespace-insensitive match', () => {
-    expect(isAdminUser(user('  ADMIN@Example.COM  '))).toBe(true)
-  })
-
-  it('returns false for non-admin email', () => {
-    expect(isAdminUser(user('someone-else@example.com'))).toBe(false)
-  })
-
-  it('returns false when ADMIN_EMAIL env var unset', () => {
-    delete process.env.ADMIN_EMAIL
-    expect(isAdminUser(user('admin@example.com'))).toBe(false)
-  })
-
-  it('returns false when ADMIN_EMAIL is empty string', () => {
-    process.env.ADMIN_EMAIL = '   '
-    expect(isAdminUser(user('admin@example.com'))).toBe(false)
+  it('returns false when the query errors', async () => {
+    const supabase = mockClient({ data: null, error: { message: 'boom' } })
+    expect(await isAdminUser(supabase, 'user-1')).toBe(false)
   })
 })

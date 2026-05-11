@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
       redirect.searchParams.set('next', path)
       return NextResponse.redirect(redirect)
     }
-    if (!isAdminUser(user)) {
+    if (!(await isAdminUser(supabase, user.id))) {
       if (path.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }

@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login?next=/admin')
-  if (!isAdminUser(user)) redirect('/')
+  if (!(await isAdminUser(supabase, user.id))) redirect('/')
 
   return (
     <div style={{ backgroundColor: '#f1f1f1', minHeight: '100vh' }}>

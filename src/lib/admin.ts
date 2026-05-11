@@ -1,15 +1,25 @@
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Admin authorisation. The single hard-coded admin is identified by
- * the ADMIN_EMAIL environment variable. The check uses `auth.users.email`
- * which is signed into the Supabase JWT — no extra DB read required.
+ * Admin authorisation. Reads the `is_admin` flag from `user_profiles`.
  *
- * Use server-side only. Never trust client-supplied "isAdmin" claims.
+ * Promotion is DB-only (see migration 007). There is no application
+ * code path that toggles `is_admin` — the column has UPDATE revoked
+ * from the `authenticated` and `anon` roles, so even a user updating
+ * their own profile row cannot self-elevate.
+ *
+ * Server-side only. Never trust client-supplied "isAdmin" claims.
  */
-export function isAdminUser(user: User | null | undefined): boolean {
-  if (!user || !user.email) return false
-  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase()
-  if (!adminEmail) return false
-  return user.email.trim().toLowerCase() === adminEmail
+export async function isAdminUser(
+  supabase: SupabaseClient,
+  userId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId) return false
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle<{ is_admin: boolean }>()
+  if (error || !data) return false
+  return data.is_admin === true
 }
