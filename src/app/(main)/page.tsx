@@ -1,23 +1,25 @@
 import Link from 'next/link'
+import { Check, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { ListingCard } from '@/components/listings/listing-card'
 import { ListingCardSkeleton } from '@/components/listings/listing-card-skeleton'
 import { Listing } from '@/types'
 import { mockListings } from '@/lib/data/mock-listings'
 
+const HERO_COLLAGE = [
+  'gumtree-armchair', 'gumtree-camera', 'gumtree-hand', 'gumtree-house', 'gumtree-car',
+  'gumtree-dog', 'gumtree-shake', 'gumtree-clothes', 'gumtree-fridge', 'gumtree-fix',
+]
+
 const CATEGORIES = [
-  { name: 'Cars & Vehicles',  slug: 'cars-vehicles',       bg: '#1a3a5c', emoji: '🚗' },
-  { name: 'Home & Garden',    slug: 'home-garden',         bg: '#2d6a3f', emoji: '🏡' },
-  { name: 'Tradespeople',     slug: 'services',            bg: '#7a4a1e', emoji: '🔧' },
-  { name: 'Baby & Kids',      slug: 'kids-baby',           bg: '#b03060', emoji: '🧸' },
-  { name: 'Fashion',          slug: 'fashion',             bg: '#5a2d82', emoji: '👗' },
-  { name: 'Sports & Leisure', slug: 'sport-leisure',       bg: '#1a6b6b', emoji: '⚽' },
-  { name: 'Electronics',      slug: 'electronics',         bg: '#2a4080', emoji: '💻' },
-  { name: 'Property',         slug: 'property',            bg: '#0D475C', emoji: '🏠' },
-  { name: 'Pets',             slug: 'pets',                bg: '#5c3a1a', emoji: '🐾' },
-  { name: 'Jobs',             slug: 'jobs',                bg: '#1a5c3a', emoji: '💼' },
-  { name: 'Community',        slug: 'community',           bg: '#4a3060', emoji: '🤝' },
-  { name: 'Business',         slug: 'business-industrial', bg: '#3a3a3a', emoji: '🏭' },
+  { name: 'Cars & Vehicles',  slug: 'cars-vehicles',  imgSeed: 'gum-cars' },
+  { name: 'Home & Garden',    slug: 'home-garden',    imgSeed: 'gum-home' },
+  { name: 'Tradespeople',     slug: 'services',       imgSeed: 'gum-trades' },
+  { name: 'Baby & Kids',      slug: 'kids-baby',      imgSeed: 'gum-baby' },
+  { name: 'Fashion',          slug: 'fashion',        imgSeed: 'gum-fashion' },
+  { name: 'Sports & Leisure', slug: 'sport-leisure',  imgSeed: 'gum-sport' },
+  { name: 'Computers',        slug: 'electronics',    imgSeed: 'gum-comp' },
+  { name: 'Properties',       slug: 'property',       imgSeed: 'gum-property' },
 ]
 
 const UK_LOCATIONS = [
@@ -47,79 +49,82 @@ export default async function HomePage() {
 
   return (
     <div style={{ backgroundColor: '#f1f1f1' }}>
-      {/* ── Hero ── */}
-      <section className="relative py-14 px-4" style={{ backgroundColor: '#0D475C' }}>
-        <div className="max-w-3xl mx-auto text-center text-white">
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-2 leading-tight tracking-tight">
-            Free local classifieds
-          </h1>
-          <p className="text-base text-white/75 mb-8">
-            Buy and sell locally across the UK — it's free and easy
-          </p>
-
-          <form action="/browse" method="GET">
-            <div className="flex flex-col sm:flex-row bg-white rounded-md overflow-hidden shadow-xl">
-              <input
-                name="q"
-                type="text"
-                placeholder="What are you looking for?"
-                className="flex-1 px-4 py-3.5 text-gray-800 text-sm outline-none min-w-0"
-              />
-              <div className="hidden sm:block w-px bg-gray-200 my-2" />
-              <input
-                name="location"
-                type="text"
-                placeholder="📍 Location"
-                className="sm:w-44 px-4 py-3.5 text-gray-800 text-sm outline-none border-t sm:border-t-0 border-gray-200"
-              />
-              <button
-                type="submit"
-                className="px-8 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: '#e75462' }}
+      {/* ── Hero card: Free local classifieds + image collage ── */}
+      <section className="max-w-7xl mx-auto px-4 py-6">
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden" style={{ borderColor: '#dbdadb' }}>
+          <div className="grid md:grid-cols-2 gap-6 p-6 md:p-8 items-center">
+            {/* Left — copy + CTA */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-extrabold mb-2" style={{ color: '#0D475C' }}>
+                Free local classifieds
+              </h1>
+              <p className="text-sm text-gray-600 mb-4">One place for all your Ads</p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                  <Check size={14} style={{ color: '#72ef36' }} strokeWidth={3} />
+                  <span className="uppercase tracking-wide">600K daily active users</span>
+                </li>
+                <li className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                  <Check size={14} style={{ color: '#72ef36' }} strokeWidth={3} />
+                  <span className="uppercase tracking-wide">30K daily new ads</span>
+                </li>
+              </ul>
+              <Link
+                href="/post-ad"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded font-bold text-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#72ef36', color: '#0D475C' }}
               >
-                Search
-              </button>
+                <Plus size={16} strokeWidth={3} />
+                Post Ad
+              </Link>
             </div>
-          </form>
 
-          <div className="flex justify-center gap-10 mt-8">
-            <div className="text-center">
-              <p className="text-2xl font-bold">14M+</p>
-              <p className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">Live Ads</p>
-            </div>
-            <div className="w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-2xl font-bold">600K</p>
-              <p className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">Daily Users</p>
-            </div>
-            <div className="w-px bg-white/20" />
-            <div className="text-center">
-              <p className="text-2xl font-bold">Free</p>
-              <p className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">To Post</p>
+            {/* Right — staggered photo collage */}
+            <div className="grid grid-cols-5 gap-1.5 max-h-56 overflow-hidden">
+              {HERO_COLLAGE.map((seed, i) => (
+                <div
+                  key={seed}
+                  className={`relative rounded-md overflow-hidden ${i % 2 === 0 ? 'mt-0' : 'mt-4'}`}
+                  style={{ aspectRatio: '1 / 1' }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://picsum.photos/seed/${seed}/160/160`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Categories ── */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <h2 className="text-xl font-extrabold mb-5" style={{ color: '#0D475C' }}>
-          Browse popular categories
+      {/* ── Discover popular categories — 4-per-row photo tiles ── */}
+      <section className="max-w-7xl mx-auto px-4 py-6">
+        <h2 className="text-xl font-extrabold mb-4" style={{ color: '#0D475C' }}>
+          Discover popular categories
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {CATEGORIES.map(cat => (
             <Link
               key={cat.slug}
               href={`/browse?category=${cat.slug}`}
-              className="relative overflow-hidden rounded-lg h-28 group"
-              style={{ backgroundColor: cat.bg }}
+              className="block bg-white rounded-lg overflow-hidden border hover:shadow-md transition-shadow group"
+              style={{ borderColor: '#dbdadb' }}
             >
-              <span className="absolute top-2 right-2 text-4xl opacity-20 group-hover:opacity-30 transition-opacity select-none">
-                {cat.emoji}
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-2.5 z-10">
-                <p className="text-white font-semibold text-xs leading-tight">{cat.name}</p>
+              <div className="relative w-full" style={{ aspectRatio: '1 / 0.8' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://picsum.photos/seed/${cat.imgSeed}/400/320`}
+                  alt={cat.name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+              </div>
+              <div className="px-3 py-2 bg-white">
+                <h3 className="text-sm font-bold text-gray-900">{cat.name}</h3>
               </div>
             </Link>
           ))}

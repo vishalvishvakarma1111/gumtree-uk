@@ -50,7 +50,7 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t mt-8" style={{ borderColor: '#dbdadb' }}>
+    <footer className="bg-white border-t mt-8" style={{ borderColor: '#dbdadb' ,backgroundColor: '#3c3241'}}>
       {/* Main footer links */}
       <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -80,7 +80,7 @@ export default function Footer() {
         </div>
 
         {/* Social */}
-        <div className="mt-8 pt-6 border-t" style={{ borderColor: '#dbdadb' }}>
+        <div className="mt-8 pt-6 border-t" style={{ borderColor: '#3c3241' }}>
           <p className="text-xs font-semibold mb-3" style={{ color: '#0D475C' }}>
             Follow us
           </p>

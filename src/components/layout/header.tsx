@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, User, LogOut, Heart, FileText, MessageCircle, Settings, Shield } from 'lucide-react'
+import { User, LogOut, Heart, FileText, MessageCircle, Settings, Shield, Search, MapPin, Menu as MenuIcon, Plus, Mail, LogIn, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS: { label: string; slug: string; sub: { label: string; slug: string }[] }[] = [
@@ -89,7 +89,6 @@ interface HeaderProps {
 export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const [query, setQuery] = useState('')
   const [location, setLocation] = useState('')
-  const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unread, setUnread] = useState(unreadMessages)
   const [smartSearch, setSmartSearchState] = useState(false)
@@ -215,214 +214,223 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   const initials = user?.name?.slice(0, 2).toUpperCase() ?? ''
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
+    <header className="shadow-sm sticky top-0 z-50" style={{ backgroundColor: '#0D475C' }}>
       {/* ── Main row ── */}
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-        {/* Logo */}
-        <Link href="/" className="flex-shrink-0 mr-2">
-          <span className="text-2xl font-extrabold tracking-tight" style={{ color: '#0D475C' }}>
+        {/* Logo — real Gumtree tree SVG + wordmark */}
+        <Link href="/" className="flex-shrink-0 mr-2 flex items-center gap-2" aria-label="Gumtree home">
+          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="32" viewBox="27.74 5.25 19.52 24.298" aria-hidden="true">
+            <path fill="#72EF36" d="M44.433 11.914a.707.707 0 0 1-.337-.606C43.76 7.942 40.933 5.25 37.5 5.25s-6.327 2.625-6.596 6.058a.806.806 0 0 1-.336.606c-1.683 1.211-2.827 3.164-2.827 5.384 0 3.029 2.087 5.654 4.914 6.395.471.135 1.01.202 1.144.067.337-.202.808-1.885.606-2.221-.135-.203-.539-.404-1.077-.539-1.683-.471-2.895-1.952-2.895-3.769 0-1.01.404-1.885 1.01-2.625a2.964 2.964 0 0 1 1.01-.808c.74-.404 1.144-1.144 1.144-1.952 0-.404.067-.808.202-1.211.539-1.548 1.952-2.692 3.702-2.692s3.164 1.144 3.702 2.692c.134.404.202.808.202 1.211 0 .808.403 1.548 1.144 1.952.404.202.673.471 1.01.808a3.967 3.967 0 0 1 1.01 2.625 3.907 3.907 0 0 1-3.903 3.904c-2.491 0-4.443 2.02-4.443 4.51v2.558c0 .471.067 1.009.202 1.144.27.27 2.02.27 2.288 0 .135-.135.203-.673.203-1.144v-2.625c0-.942.807-1.75 1.75-1.75 3.634 0 6.596-2.962 6.596-6.596-.002-2.155-1.147-4.107-2.829-5.318z"/>
+          </svg>
+          <span className="text-2xl font-bold tracking-tight hidden sm:inline" style={{ color: '#F0ECE6' }}>
             Gumtree
           </span>
         </Link>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex flex-1 max-w-2xl">
-          <div
-            className="flex flex-1 border-2 rounded-l-md overflow-hidden"
-            style={{ borderColor: '#0D475C' }}
-          >
+        {/* Search — two separate white pills + small green icon button */}
+        <form onSubmit={handleSearch} className="flex flex-1 max-w-3xl items-center gap-2">
+          <div className="flex flex-1 items-center bg-white rounded-md px-3 h-10">
+            <Search size={16} className="text-gray-400 flex-shrink-0" />
             <input
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="What are you looking for?"
-              className="flex-1 px-3 py-2 text-sm outline-none text-gray-800"
+              placeholder="Search Gumtree"
+              className="flex-1 px-2 text-sm outline-none text-gray-800 min-w-0 bg-transparent"
             />
-            <div className="hidden md:flex items-center">
-              <div className="w-px h-5 bg-gray-300" />
-              <input
-                type="text"
-                value={location}
-                onChange={e => setLocation(e.target.value)}
-                placeholder="Location"
-                className="w-36 px-3 py-2 text-sm outline-none text-gray-800"
-              />
-            </div>
+          </div>
+          <div className="hidden md:flex items-center bg-white rounded-md px-3 h-10 w-56">
+            <MapPin size={16} className="text-gray-400 flex-shrink-0" />
+            <input
+              type="text"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="UK"
+              className="flex-1 px-2 text-sm outline-none text-gray-800 min-w-0 bg-transparent"
+            />
           </div>
           <button
             type="submit"
-            className="px-5 py-2 text-sm font-semibold text-white rounded-r-md transition-colors hover:opacity-90"
-            style={{ backgroundColor: '#0D475C' }}
+            aria-label="Search"
+            className="flex items-center justify-center h-10 w-10 rounded-md transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ backgroundColor: '#72ef36', color: '#0D475C' }}
           >
-            Search
+            <Search size={18} strokeWidth={2.5} />
           </button>
         </form>
         {smartError && (
-          <p className="text-xs text-red-500 ml-2 hidden md:block max-w-xs truncate" title={smartError}>
+          <p className="text-xs text-yellow-200 ml-2 hidden md:block max-w-xs truncate" title={smartError}>
             {smartError}
           </p>
         )}
 
-        {/* Right nav */}
-        <nav className="flex items-center gap-2 flex-shrink-0 ml-auto">
-          {/* Post an ad — requires auth */}
+        {/* Right nav — icon over label, all white. Post an ad always visible. */}
+        <nav className="flex items-start gap-1 flex-shrink-0 ml-auto">
           <Link
             href={guardedHref('/post-ad')}
-            className="text-sm font-semibold px-4 py-2 rounded text-white transition-opacity hover:opacity-90 whitespace-nowrap"
-            style={{ backgroundColor: '#e75462' }}
+            className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
           >
-            Post an ad
+            <Plus size={20} strokeWidth={2.5} />
+            <span className="text-[11px] font-medium whitespace-nowrap">Post an ad</span>
           </Link>
 
           {user ? (
-            /* ── Logged-in user dropdown ── */
-            <div className="relative hidden sm:block" ref={dropdownRef}>
-              <button
-                onClick={() => setDropdownOpen(o => !o)}
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
-              >
-                <div className="relative flex-shrink-0">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: '#0D475C' }}
-                  >
-                    {initials}
-                  </div>
-                  {unread > 0 && (
-                    <span
-                      className="absolute -top-1 -right-1 text-[10px] font-bold text-white rounded-full min-w-4 h-4 px-1 flex items-center justify-center"
-                      style={{ backgroundColor: '#e75462' }}
-                    >
-                      {unread > 9 ? '9+' : unread}
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm font-medium max-w-[80px] truncate" style={{ color: '#0D475C' }}>
-                  {user.name}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className="transition-transform"
-                  style={{
-                    color: '#0D475C',
-                    transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0)',
-                  }}
-                />
-              </button>
-
-              {dropdownOpen && (
-                <div
-                  className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border shadow-lg py-1 z-50"
-                  style={{ borderColor: '#dbdadb' }}
+            <Link
+              href="/messages"
+              className="relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
+            >
+              <Mail size={20} strokeWidth={2.5} />
+              <span className="text-[11px] font-medium whitespace-nowrap">Messages</span>
+              {unread > 0 && (
+                <span
+                  className="absolute top-0.5 right-1 text-[10px] font-bold text-[#0D475C] rounded-full min-w-4 h-4 px-1 flex items-center justify-center"
+                  style={{ backgroundColor: '#72ef36' }}
                 >
-                  <div className="px-4 py-2.5 border-b" style={{ borderColor: '#f0f0f0' }}>
-                    <p className="text-xs font-semibold text-gray-700 truncate">{user.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                  </div>
-                  {[
-                    { label: 'My Ads',    href: '/account/my-ads',   Icon: FileText, badge: 0 },
-                    { label: 'Watchlist', href: '/account/watchlist', Icon: Heart, badge: 0 },
-                    { label: 'Messages',  href: '/messages',          Icon: MessageCircle, badge: unread },
-                    { label: 'Profile',   href: '/account/profile',   Icon: Settings, badge: 0 },
-                  ].map(({ label, href, Icon, badge }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <Icon size={14} className="text-gray-400" />
-                      <span className="flex-1">{label}</span>
-                      {badge > 0 && (
-                        <span
-                          className="text-[10px] font-bold text-white rounded-full px-1.5 py-0.5 min-w-5 text-center"
-                          style={{ backgroundColor: '#e75462' }}
-                        >
-                          {badge > 9 ? '9+' : badge}
-                        </span>
-                      )}
-                    </Link>
-                  ))}
-                  {user.isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm border-t hover:bg-amber-50 transition-colors"
-                      style={{ color: '#a16207', borderColor: '#f0f0f0' }}
-                    >
-                      <Shield size={14} />
-                      <span className="flex-1 font-semibold">Admin panel</span>
-                    </Link>
-                  )}
-                  <div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <LogOut size={14} />
-                      Sign out
-                    </button>
-                  </div>
-                </div>
+                  {unread > 9 ? '9+' : unread}
+                </span>
               )}
-            </div>
+            </Link>
           ) : (
-            /* ── Guest auth links ── */
             <>
               <Link
-                href="/login"
-                className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded transition-colors hover:bg-gray-100"
-                style={{ color: '#0D475C' }}
+                href="/register"
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
               >
-                Login
+                <UserPlus size={20} strokeWidth={2.5} />
+                <span className="text-[11px] font-medium whitespace-nowrap">Sign up</span>
               </Link>
               <Link
-                href="/register"
-                className="hidden sm:block text-sm font-medium px-3 py-1.5 rounded border transition-colors hover:bg-gray-50"
-                style={{ color: '#0D475C', borderColor: '#0D475C' }}
+                href="/login"
+                className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
               >
-                Sign up
+                <LogIn size={20} strokeWidth={2.5} />
+                <span className="text-[11px] font-medium whitespace-nowrap">Login</span>
               </Link>
             </>
           )}
 
-          {/* Mobile hamburger */}
-          <button
-            className="sm:hidden p-2 rounded hover:bg-gray-100"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
-          >
-            <div className="space-y-1">
-              <span className="block w-5 h-0.5 bg-gray-600" />
-              <span className="block w-5 h-0.5 bg-gray-600" />
-              <span className="block w-5 h-0.5 bg-gray-600" />
-            </div>
-          </button>
+          {/* Menu button — only when logged in */}
+          <div className={`relative ${user ? '' : 'hidden'}`} ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(o => !o)}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
+            >
+              <MenuIcon size={20} strokeWidth={2.5} />
+              <span className="text-[11px] font-medium whitespace-nowrap">Menu</span>
+            </button>
+
+            {dropdownOpen && (
+              <div
+                className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg border shadow-lg py-1 z-50"
+                style={{ borderColor: '#dbdadb' }}
+              >
+                {user ? (
+                  <>
+                    <div className="px-4 py-2.5 border-b flex items-center gap-2.5" style={{ borderColor: '#f0f0f0' }}>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                        style={{ backgroundColor: '#0D475C' }}
+                      >
+                        {initials}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-700 truncate">{user.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    {[
+                      { label: 'My Ads',    href: '/account/my-ads',    Icon: FileText, badge: 0 },
+                      { label: 'Watchlist', href: '/account/watchlist', Icon: Heart, badge: 0 },
+                      { label: 'Messages',  href: '/messages',          Icon: MessageCircle, badge: unread },
+                      { label: 'Profile',   href: '/account/profile',   Icon: Settings, badge: 0 },
+                    ].map(({ label, href, Icon, badge }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Icon size={14} className="text-gray-400" />
+                        <span className="flex-1">{label}</span>
+                        {badge > 0 && (
+                          <span
+                            className="text-[10px] font-bold text-white rounded-full px-1.5 py-0.5 min-w-5 text-center"
+                            style={{ backgroundColor: '#e75462' }}
+                          >
+                            {badge > 9 ? '9+' : badge}
+                          </span>
+                        )}
+                      </Link>
+                    ))}
+                    {user.isAdmin && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm border-t hover:bg-amber-50 transition-colors"
+                        style={{ color: '#a16207', borderColor: '#f0f0f0' }}
+                      >
+                        <Shield size={14} />
+                        <span className="flex-1 font-semibold">Admin panel</span>
+                      </Link>
+                    )}
+                    <div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut size={14} />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <User size={14} className="text-gray-400" />
+                      <span>Login</span>
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                      style={{ color: '#0D475C' }}
+                    >
+                      <Plus size={14} />
+                      <span>Sign up</span>
+                    </Link>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </nav>
       </div>
 
-      {/* ── Category nav bar with mega dropdown ── */}
-      <div className="border-t border-gray-200" style={{ backgroundColor: '#0D475C' }}>
-        <div className="max-w-7xl mx-auto px-4 overflow-x-auto">
-          <div className="flex whitespace-nowrap">
+      {/* ── Category nav bar — equal-width, dividers, compact ── */}
+      <div className="bg-white border-b" style={{ borderColor: '#dbdadb' }}>
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex divide-x divide-gray-200">
             {NAV_ITEMS.map(item => (
-              <div key={item.slug} className="group relative">
+              <div key={item.slug} className="group relative flex-1">
                 <Link
                   href={`/browse?category=${item.slug}`}
-                  className="text-xs font-semibold text-white px-4 py-3 hover:bg-white/10 transition-colors block"
+                  className="block text-center text-sm font-bold text-gray-900 px-3 py-2.5 border-b-[3px] border-transparent group-hover:border-[#0D475C] group-hover:text-[#0D475C] transition-colors"
                 >
                   {item.label}
                 </Link>
                 <div
-                  className="absolute left-0 top-full hidden group-hover:block bg-white shadow-lg rounded-b-lg z-50 min-w-[220px] py-2 border"
+                  className="absolute left-0 top-full hidden group-hover:block bg-white shadow-lg rounded-b-lg z-50 min-w-[240px] py-2 border"
                   style={{ borderColor: '#dbdadb' }}
                 >
                   {item.sub.map(s => (
                     <Link
                       key={s.slug}
                       href={`/browse?category=${item.slug}&q=${encodeURIComponent(s.label)}`}
-                      className="block px-4 py-2 text-xs font-medium hover:bg-gray-50 transition-colors"
-                      style={{ color: '#0D475C' }}
+                      className="block px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-[#0D475C] transition-colors"
                     >
                       {s.label}
                     </Link>
@@ -434,39 +442,6 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
         </div>
       </div>
 
-      {/* ── Mobile menu ── */}
-      {menuOpen && (
-        <div className="sm:hidden bg-white border-t border-gray-200 px-4 py-3 space-y-2">
-          {NAV_ITEMS.map(item => (
-            <Link
-              key={item.slug}
-              href={`/browse?category=${item.slug}`}
-              className="block text-sm font-medium py-2 border-b border-gray-100"
-              style={{ color: '#0D475C' }}
-              onClick={() => setMenuOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
-
-          {user ? (
-            <div className="pt-2 space-y-2">
-              <p className="text-xs text-gray-400">Signed in as <strong>{user.name}</strong></p>
-              <Link href="/account/my-ads"    className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>My Ads</Link>
-              <Link href="/account/watchlist" className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>Watchlist</Link>
-              <Link href="/messages"          className="block text-sm py-1.5 font-medium" style={{ color: '#0D475C' }} onClick={() => setMenuOpen(false)}>Messages</Link>
-              <button onClick={() => { handleSignOut(); setMenuOpen(false) }} className="block text-sm py-1.5 font-medium text-red-600">
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2 pt-2">
-              <Link href="/login"    className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Login</Link>
-              <Link href="/register" className="flex-1 text-center text-sm py-2 border rounded" style={{ color: '#0D475C', borderColor: '#0D475C' }}>Sign up</Link>
-            </div>
-          )}
-        </div>
-      )}
     </header>
   )
 }
