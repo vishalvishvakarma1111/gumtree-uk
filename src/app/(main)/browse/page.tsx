@@ -6,14 +6,19 @@ import { ListingCardSkeleton } from '@/components/listings/listing-card-skeleton
 import FilterSidebar from '@/components/filters/filter-sidebar'
 import SortDropdown from '@/components/browse/sort-dropdown'
 import ViewToggle from '@/components/browse/view-toggle'
+import PostcodeRadiusSearch from '@/components/browse/postcode-radius-search'
 import { mockListings } from '@/lib/data/mock-listings'
 import { createClient } from '@/lib/supabase/server'
+import { lookupPostcode, type PostcodeCoords } from '@/lib/postcode'
+import { boundingBox, haversineMiles, parseRadius } from '@/lib/geo'
 import { Listing } from '@/types'
 
 interface SP {
   q?: string
   category?: string
   location?: string
+  postcode?: string
+  radius?: string
   min_price?: string
   max_price?: string
   conditions?: string
@@ -25,7 +30,10 @@ interface SP {
 
 const PAGE_SIZE = 20
 
-async function fetchFromDb(params: SP): Promise<Listing[] | null> {
+async function fetchFromDb(
+  params: SP,
+  coords: PostcodeCoords | null,
+): Promise<Listing[] | null> {
   try {
     const supabase = await createClient()
     let query = supabase
@@ -39,6 +47,17 @@ async function fetchFromDb(params: SP): Promise<Listing[] | null> {
     if (params.max_price) query = query.lte('price', Number(params.max_price))
     if (params.conditions) query = query.in('condition', params.conditions.split(','))
     if (params.urgent === '1') query = query.eq('is_urgent', true)
+
+    if (coords) {
+      const box = boundingBox(coords.latitude, coords.longitude, parseRadius(params.radius))
+      query = query
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .gte('latitude', box.minLat)
+        .lte('latitude', box.maxLat)
+        .gte('longitude', box.minLng)
+        .lte('longitude', box.maxLng)
+    }
 
     if (params.category) {
       const { data: cat } = await supabase
@@ -66,8 +85,18 @@ async function fetchFromDb(params: SP): Promise<Listing[] | null> {
   }
 }
 
-function applyFilters(params: SP): Listing[] {
+function applyFilters(params: SP, coords: PostcodeCoords | null): Listing[] {
   let out = [...mockListings] as Listing[]
+
+  if (coords) {
+    const radius = parseRadius(params.radius)
+    out = out.filter(
+      l =>
+        l.latitude !== null &&
+        l.longitude !== null &&
+        haversineMiles(coords.latitude, coords.longitude, l.latitude, l.longitude) <= radius,
+    )
+  }
 
   if (params.q) {
     const q = params.q.toLowerCase()
@@ -170,8 +199,9 @@ export default async function BrowsePage({
   searchParams: Promise<SP>
 }) {
   const params = await searchParams
-  const dbListings = await fetchFromDb(params)
-  const mockMatches = applyFilters(params)
+  const coords = params.postcode ? await lookupPostcode(params.postcode) : null
+  const dbListings = await fetchFromDb(params, coords)
+  const mockMatches = applyFilters(params, coords)
   const merged = dbListings
     ? [...dbListings, ...mockMatches.filter(m => !dbListings.some(d => d.id === m.id))]
     : mockMatches
@@ -189,6 +219,8 @@ export default async function BrowsePage({
     if (params.q) sp.set('q', params.q)
     if (params.category) sp.set('category', params.category)
     if (params.location) sp.set('location', params.location)
+    if (params.postcode) sp.set('postcode', params.postcode)
+    if (params.radius) sp.set('radius', params.radius)
     if (params.min_price) sp.set('min_price', params.min_price)
     if (params.max_price) sp.set('max_price', params.max_price)
     if (params.conditions) sp.set('conditions', params.conditions)
@@ -230,7 +262,11 @@ export default async function BrowsePage({
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
                 {totalCount} {totalCount === 1 ? 'ad' : 'ads'} found
-                {params.location ? ` · ${params.location}` : ' · United Kingdom'}
+                {coords
+                  ? ` · within ${parseRadius(params.radius)} mi of ${coords.postcode}`
+                  : params.location
+                  ? ` · ${params.location}`
+                  : ' · United Kingdom'}
                 {totalPages > 1 && ` · page ${currentPage} of ${totalPages}`}
               </p>
             </div>
@@ -251,6 +287,12 @@ export default async function BrowsePage({
         <div className="flex gap-5 items-start">
           {/* ── Filter sidebar ── */}
           <aside className="hidden lg:block w-56 xl:w-64 flex-shrink-0">
+            <Suspense fallback={null}>
+              <PostcodeRadiusSearch
+                defaultPostcode={params.postcode ?? ''}
+                defaultRadius={params.radius}
+              />
+            </Suspense>
             <Suspense
               fallback={
                 <div className="bg-white rounded-lg border animate-pulse h-[480px]" style={{ borderColor: '#dbdadb' }} />
@@ -290,7 +332,16 @@ export default async function BrowsePage({
               <>
                 <div className={view === 'list' ? 'flex flex-col gap-3' : 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3'}>
                   {listings.map(l => (
-                    <ListingCard key={l.id} listing={l} variant={view} />
+                    <ListingCard
+                      key={l.id}
+                      listing={l}
+                      variant={view}
+                      distanceMiles={
+                        coords && l.latitude !== null && l.longitude !== null
+                          ? haversineMiles(coords.latitude, coords.longitude, l.latitude, l.longitude)
+                          : undefined
+                      }
+                    />
                   ))}
                 </div>
 
