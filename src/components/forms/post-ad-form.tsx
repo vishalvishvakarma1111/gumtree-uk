@@ -7,6 +7,7 @@ import { Sparkles, Upload, X, Truck, Zap, ChevronLeft, ChevronRight, Loader2, Im
 interface PostAdFormProps {
   categorySlug: string
   categoryName: string
+  subcategories: { slug: string; name: string }[]
 }
 
 const CONDITIONS = [
@@ -25,11 +26,12 @@ const PRICE_TYPES = [
 
 const STEPS = ['Ad details', 'Photos', 'Location & options', 'Review & post']
 
-export default function PostAdForm({ categorySlug, categoryName }: PostAdFormProps) {
+export default function PostAdForm({ categorySlug, categoryName, subcategories }: PostAdFormProps) {
   const router = useRouter()
   const [step, setStep] = useState(0)
 
   // Form fields
+  const [subcategorySlug, setSubcategorySlug] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -176,6 +178,9 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
   function validateStep(): boolean {
     const e: Record<string, string> = {}
     if (step === 0) {
+      if (subcategories.length > 0 && !subcategorySlug) {
+        e.subcategory = 'Pick a more specific category'
+      }
       if (!title.trim()) e.title = 'Title is required'
       if (!description.trim()) e.description = 'Description is required'
       if (priceType !== 'free' && (!price || isNaN(Number(price)))) {
@@ -206,7 +211,7 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
           price: priceType !== 'free' ? Number(price) : null,
           price_type: priceType,
           condition,
-          category_id: categorySlug,
+          category_id: subcategorySlug || categorySlug,
           location,
           images: photos,
           offers_shipping: offersShipping,
@@ -267,6 +272,39 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
           {/* ── Step 0: Ad details ── */}
           {step === 0 && (
             <>
+              {subcategories.length > 0 && (
+                <Field
+                  label={`Sub-category in ${categoryName}`}
+                  error={errors.subcategory}
+                >
+                  <select
+                    value={subcategorySlug}
+                    onChange={e => {
+                      setSubcategorySlug(e.target.value)
+                      setErrors(er => ({ ...er, subcategory: '' }))
+                    }}
+                    className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none bg-white"
+                    style={{
+                      borderColor: errors.subcategory ? '#e75462' : '#dbdadb',
+                    }}
+                    onFocus={e =>
+                      (e.currentTarget.style.borderColor = '#0D475C')
+                    }
+                    onBlur={e =>
+                      (e.currentTarget.style.borderColor = errors.subcategory
+                        ? '#e75462'
+                        : '#dbdadb')
+                    }
+                  >
+                    <option value="">Choose one…</option>
+                    {subcategories.map(s => (
+                      <option key={s.slug} value={s.slug}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               <Field label="Title" error={errors.title}>
                 <div className="relative">
                   <input
@@ -558,7 +596,16 @@ export default function PostAdForm({ categorySlug, categoryName }: PostAdFormPro
           {step === 3 && (
             <div className="space-y-4">
               <ReviewRow label="Title" value={title} />
-              <ReviewRow label="Category" value={categoryName} />
+              <ReviewRow
+                label="Category"
+                value={
+                  subcategorySlug
+                    ? `${categoryName} › ${
+                        subcategories.find(s => s.slug === subcategorySlug)?.name ?? subcategorySlug
+                      }`
+                    : categoryName
+                }
+              />
               <ReviewRow label="Condition" value={CONDITIONS.find(c => c.value === condition)?.label ?? condition} />
               <ReviewRow
                 label="Price"

@@ -2,23 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-
-const CATEGORIES = [
-  { label: 'All categories', slug: '' },
-  { label: 'Cars & Vehicles', slug: 'cars-vehicles' },
-  { label: 'Property', slug: 'property' },
-  { label: 'Jobs', slug: 'jobs' },
-  { label: 'Electronics', slug: 'electronics' },
-  { label: 'Home & Garden', slug: 'home-garden' },
-  { label: 'Pets', slug: 'pets' },
-  { label: 'Fashion', slug: 'fashion' },
-  { label: 'Sport & Leisure', slug: 'sport-leisure' },
-  { label: 'Kids & Baby', slug: 'kids-baby' },
-  { label: 'Services', slug: 'services' },
-  { label: 'Community', slug: 'community' },
-  { label: 'Business & Industrial', slug: 'business-industrial' },
-  { label: 'Other', slug: 'other' },
-]
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import type { CategoryNode } from '@/lib/categories'
 
 const CONDITIONS: { label: string; value: string }[] = [
   { label: 'New', value: 'new' },
@@ -29,6 +14,7 @@ const CONDITIONS: { label: string; value: string }[] = [
 ]
 
 interface FilterSidebarProps {
+  tree: CategoryNode[]
   defaultCategory?: string
   defaultMinPrice?: string
   defaultMaxPrice?: string
@@ -36,7 +22,16 @@ interface FilterSidebarProps {
   defaultUrgent?: boolean
 }
 
+function pickInitialExpanded(tree: CategoryNode[], selected: string): string | null {
+  for (const node of tree) {
+    if (node.slug === selected) return node.slug
+    if (node.children.some(c => c.slug === selected)) return node.slug
+  }
+  return null
+}
+
 export default function FilterSidebar({
+  tree,
   defaultCategory = '',
   defaultMinPrice = '',
   defaultMaxPrice = '',
@@ -47,6 +42,9 @@ export default function FilterSidebar({
   const searchParams = useSearchParams()
 
   const [category, setCategory] = useState(defaultCategory)
+  const [expanded, setExpanded] = useState<string | null>(
+    pickInitialExpanded(tree, defaultCategory),
+  )
   const [minPrice, setMinPrice] = useState(defaultMinPrice)
   const [maxPrice, setMaxPrice] = useState(defaultMaxPrice)
   const [conditions, setConditions] = useState<string[]>(defaultConditions)
@@ -65,6 +63,7 @@ export default function FilterSidebar({
     else params.delete('conditions')
     if (urgent) params.set('urgent', '1')
     else params.delete('urgent')
+    params.delete('page')
     router.push(`/browse?${params.toString()}`)
   }
 
@@ -75,6 +74,7 @@ export default function FilterSidebar({
     if (q) p.set('q', q)
     if (loc) p.set('location', loc)
     setCategory('')
+    setExpanded(null)
     setMinPrice('')
     setMaxPrice('')
     setConditions([])
@@ -87,6 +87,14 @@ export default function FilterSidebar({
     setConditions(prev =>
       prev.includes(val) ? prev.filter(c => c !== val) : [...prev, val]
     )
+  }
+
+  function pickCategory(slug: string) {
+    setCategory(slug)
+  }
+
+  function toggleExpanded(slug: string) {
+    setExpanded(prev => (prev === slug ? null : slug))
   }
 
   return (
@@ -116,26 +124,93 @@ export default function FilterSidebar({
         <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
           Category
         </p>
-        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-          {CATEGORIES.map(cat => (
-            <label key={cat.slug} className="flex items-center gap-2.5 cursor-pointer group">
-              <input
-                type="radio"
-                name="category"
-                value={cat.slug}
-                checked={category === cat.slug}
-                onChange={() => setCategory(cat.slug)}
-                className="w-3.5 h-3.5 cursor-pointer"
-                style={{ accentColor: '#0D475C' }}
-              />
-              <span
-                className="text-sm leading-tight group-hover:text-gray-900"
-                style={{ color: category === cat.slug ? '#0D475C' : '#444' }}
-              >
-                {cat.label}
-              </span>
-            </label>
-          ))}
+        <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="radio"
+              name="category"
+              value=""
+              checked={category === ''}
+              onChange={() => pickCategory('')}
+              className="w-3.5 h-3.5 cursor-pointer"
+              style={{ accentColor: '#0D475C' }}
+            />
+            <span
+              className="text-sm leading-tight group-hover:text-gray-900"
+              style={{ color: category === '' ? '#0D475C' : '#444' }}
+            >
+              All categories
+            </span>
+          </label>
+
+          {tree.map(parent => {
+            const isOpen = expanded === parent.slug
+            const isSelected = category === parent.slug
+            const hasSelectedChild = parent.children.some(c => c.slug === category)
+
+            return (
+              <div key={parent.slug}>
+                <div className="flex items-center gap-1">
+                  <label className="flex items-center gap-2.5 cursor-pointer group flex-1 min-w-0">
+                    <input
+                      type="radio"
+                      name="category"
+                      value={parent.slug}
+                      checked={isSelected}
+                      onChange={() => pickCategory(parent.slug)}
+                      className="w-3.5 h-3.5 cursor-pointer"
+                      style={{ accentColor: '#0D475C' }}
+                    />
+                    <span
+                      className="text-sm leading-tight truncate group-hover:text-gray-900"
+                      style={{
+                        color: isSelected || hasSelectedChild ? '#0D475C' : '#444',
+                        fontWeight: isSelected || hasSelectedChild ? 600 : 400,
+                      }}
+                    >
+                      <span className="mr-1">{parent.icon}</span>
+                      {parent.name}
+                    </span>
+                  </label>
+                  {parent.children.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(parent.slug)}
+                      className="p-1 text-gray-400 hover:text-gray-700"
+                      aria-label={isOpen ? `Collapse ${parent.name}` : `Expand ${parent.name}`}
+                      aria-expanded={isOpen}
+                    >
+                      {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
+                  )}
+                </div>
+
+                {isOpen && parent.children.length > 0 && (
+                  <div className="ml-5 mt-1 mb-1 space-y-1 border-l pl-3" style={{ borderColor: '#f0f0f0' }}>
+                    {parent.children.map(child => (
+                      <label key={child.slug} className="flex items-center gap-2.5 cursor-pointer group">
+                        <input
+                          type="radio"
+                          name="category"
+                          value={child.slug}
+                          checked={category === child.slug}
+                          onChange={() => pickCategory(child.slug)}
+                          className="w-3.5 h-3.5 cursor-pointer"
+                          style={{ accentColor: '#0D475C' }}
+                        />
+                        <span
+                          className="text-xs leading-tight group-hover:text-gray-900"
+                          style={{ color: category === child.slug ? '#0D475C' : '#666' }}
+                        >
+                          {child.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 

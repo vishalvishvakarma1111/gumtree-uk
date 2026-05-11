@@ -11,6 +11,7 @@ import { mockListings } from '@/lib/data/mock-listings'
 import { createClient } from '@/lib/supabase/server'
 import { lookupPostcode, type PostcodeCoords } from '@/lib/postcode'
 import { boundingBox, haversineMiles, parseRadius } from '@/lib/geo'
+import { fetchCategoryTree, findNode, type CategoryNode } from '@/lib/categories'
 import { Listing } from '@/types'
 
 interface SP {
@@ -29,6 +30,25 @@ interface SP {
 }
 
 const PAGE_SIZE = 20
+
+async function resolveCategoryIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  slug: string,
+): Promise<string[]> {
+  const { data: self } = await supabase
+    .from('categories')
+    .select('id, slug, parent_id')
+    .eq('slug', slug)
+    .maybeSingle<{ id: string; slug: string; parent_id: string | null }>()
+  if (!self) return []
+
+  const { data: children } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('parent_id', self.id)
+  const childIds = (children ?? []).map(c => c.id as string)
+  return [self.id, ...childIds]
+}
 
 async function fetchFromDb(
   params: SP,
@@ -60,12 +80,9 @@ async function fetchFromDb(
     }
 
     if (params.category) {
-      const { data: cat } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('slug', params.category)
-        .maybeSingle()
-      if (cat) query = query.eq('category_id', cat.id)
+      const ids = await resolveCategoryIds(supabase, params.category)
+      if (ids.length === 1) query = query.eq('category_id', ids[0])
+      else if (ids.length > 1) query = query.in('category_id', ids)
     }
 
     const sortMap: Record<string, [string, boolean]> = {
@@ -85,7 +102,11 @@ async function fetchFromDb(
   }
 }
 
-function applyFilters(params: SP, coords: PostcodeCoords | null): Listing[] {
+function applyFilters(
+  params: SP,
+  coords: PostcodeCoords | null,
+  tree: CategoryNode[],
+): Listing[] {
   let out = [...mockListings] as Listing[]
 
   if (coords) {
@@ -108,8 +129,11 @@ function applyFilters(params: SP, coords: PostcodeCoords | null): Listing[] {
   }
 
   if (params.category) {
-    const slug = params.category.toLowerCase()
-    out = out.filter(l => l.categories?.slug === slug)
+    const node = findNode(tree, params.category.toLowerCase())
+    const slugs = node
+      ? new Set<string>([node.slug, ...node.children.map(c => c.slug)])
+      : new Set<string>([params.category.toLowerCase()])
+    out = out.filter(l => l.categories?.slug && slugs.has(l.categories.slug))
   }
 
   if (params.location) {
@@ -184,11 +208,14 @@ function pageNumbers(current: number, total: number): (number | '…')[] {
   return out
 }
 
-function pageTitle(params: SP): string {
+function pageTitle(params: SP, tree: CategoryNode[]): string {
   if (params.q && params.location) return `"${params.q}" in ${params.location}`
   if (params.q) return `"${params.q}"`
-  if (params.category)
+  if (params.category) {
+    const node = findNode(tree, params.category)
+    if (node) return node.name
     return params.category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  }
   if (params.location) return `Listings in ${params.location}`
   return 'All listings'
 }
@@ -199,9 +226,11 @@ export default async function BrowsePage({
   searchParams: Promise<SP>
 }) {
   const params = await searchParams
+  const supabaseForTree = await createClient()
+  const tree = await fetchCategoryTree(supabaseForTree)
   const coords = params.postcode ? await lookupPostcode(params.postcode) : null
   const dbListings = await fetchFromDb(params, coords)
-  const mockMatches = applyFilters(params, coords)
+  const mockMatches = applyFilters(params, coords, tree)
   const merged = dbListings
     ? [...dbListings, ...mockMatches.filter(m => !dbListings.some(d => d.id === m.id))]
     : mockMatches
@@ -258,7 +287,7 @@ export default async function BrowsePage({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-lg font-extrabold" style={{ color: '#0D475C' }}>
-                {pageTitle(params)}
+                {pageTitle(params, tree)}
               </h1>
               <p className="text-xs text-gray-400 mt-0.5">
                 {totalCount} {totalCount === 1 ? 'ad' : 'ads'} found
@@ -299,6 +328,7 @@ export default async function BrowsePage({
               }
             >
               <FilterSidebar
+                tree={tree}
                 defaultCategory={params.category ?? ''}
                 defaultMinPrice={params.min_price ?? ''}
                 defaultMaxPrice={params.max_price ?? ''}
