@@ -8,11 +8,18 @@ import { WatchlistButton } from './watchlist-button'
 interface Props {
   listing: Listing
   variant?: 'grid' | 'list'
+  distanceMiles?: number
 }
 
 const PRICE_GREEN = '#15803d'
 
-export function ListingCard({ listing, variant = 'grid' }: Props) {
+function formatDistance(miles: number): string {
+  if (miles < 0.1) return '<0.1 mi away'
+  if (miles < 10) return `${miles.toFixed(1)} mi away`
+  return `${Math.round(miles)} mi away`
+}
+
+export function ListingCard({ listing, variant = 'grid', distanceMiles }: Props) {
   if (variant === 'list') {
     return (
       <div className="relative bg-white border rounded-xl overflow-hidden hover:shadow-md transition-shadow" style={{ borderColor: '#dbdadb' }}>
@@ -43,10 +50,18 @@ export function ListingCard({ listing, variant = 'grid' }: Props) {
             {listing.description && (
               <p className="text-xs text-gray-500 mt-1 line-clamp-2">{listing.description}</p>
             )}
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500 flex-wrap">
               <span className="flex items-center gap-1 truncate">
                 <MapPin size={11} className="flex-shrink-0" /> {listing.location}
               </span>
+              {typeof distanceMiles === 'number' && (
+                <span
+                  className="flex-shrink-0 font-semibold px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: '#e6f4ea', color: '#0D475C' }}
+                >
+                  {formatDistance(distanceMiles)}
+                </span>
+              )}
               <span className="flex items-center gap-1 flex-shrink-0">
                 <Clock size={11} /> {timeAgo(listing.created_at)}
               </span>
@@ -98,6 +113,16 @@ export function ListingCard({ listing, variant = 'grid' }: Props) {
             <p className="flex items-center gap-1 truncate">
               <MapPin size={11} className="flex-shrink-0" /> {listing.location}
             </p>
+            {typeof distanceMiles === 'number' && (
+              <p>
+                <span
+                  className="inline-block font-semibold px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: '#e6f4ea', color: '#0D475C' }}
+                >
+                  {formatDistance(distanceMiles)}
+                </span>
+              </p>
+            )}
             <p className="flex items-center gap-1">
               <Clock size={11} /> {timeAgo(listing.created_at)}
             </p>
