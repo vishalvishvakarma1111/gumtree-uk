@@ -148,10 +148,11 @@ export default async function HomePage() {
           </div>
           <Link
             href="/post-ad?category=cars-vehicles"
-            className="flex-shrink-0 px-7 py-3 rounded font-bold text-sm text-white transition-opacity hover:opacity-90 whitespace-nowrap"
-            style={{ backgroundColor: '#e75462' }}
+            className="inline-flex items-center gap-1.5 flex-shrink-0 px-5 py-2.5 rounded font-bold text-sm transition-opacity hover:opacity-90 whitespace-nowrap"
+            style={{ backgroundColor: '#72ef36', color: '#0D475C' }}
           >
-            Post an Ad →
+            <Plus size={16} strokeWidth={3} />
+            Post Ad
           </Link>
         </div>
       </section>
@@ -207,10 +208,11 @@ export default async function HomePage() {
           <div className="text-center mt-8">
             <Link
               href="/post-ad"
-              className="inline-block px-8 py-3 rounded font-bold text-sm text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#e75462' }}
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded font-bold text-sm transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#72ef36', color: '#0D475C' }}
             >
-              Post a free ad
+              <Plus size={16} strokeWidth={3} />
+              Post Ad
             </Link>
           </div>
         </div>
@@ -255,10 +257,11 @@ function EmptyState() {
       <p className="text-gray-500 text-sm mb-5">No listings yet — be the first!</p>
       <Link
         href="/post-ad"
-        className="inline-block px-6 py-2.5 rounded text-white text-sm font-bold"
-        style={{ backgroundColor: '#e75462' }}
+        className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded font-bold text-sm transition-opacity hover:opacity-90"
+        style={{ backgroundColor: '#72ef36', color: '#0D475C' }}
       >
-        Post a free ad
+        <Plus size={16} strokeWidth={3} />
+        Post Ad
       </Link>
     </div>
   )
