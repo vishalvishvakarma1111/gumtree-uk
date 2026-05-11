@@ -92,3 +92,4 @@ INSERT INTO categories (name, slug, icon, parent_id, sort_order) VALUES
   ('Office Furniture',      'office-furniture',     '🪑', (SELECT id FROM categories WHERE slug = 'business-industrial'), 3),
   ('Supplies',              'business-supplies',    '📦', (SELECT id FROM categories WHERE slug = 'business-industrial'), 4)
 ON CONFLICT (slug) DO NOTHING;
+
