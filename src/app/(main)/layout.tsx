@@ -1,10 +1,9 @@
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { createClient } from '@/lib/supabase/server'
-import { isAdminUser } from '@/lib/admin'
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
-  let user: { id: string; email: string; name: string; isAdmin: boolean } | null = null
+  let user: { id: string; email: string; name: string } | null = null
   let unreadMessages = 0
 
   try {
@@ -15,7 +14,6 @@ export default async function MainLayout({ children }: { children: React.ReactNo
         id: u.id,
         email: u.email ?? '',
         name: (u.user_metadata?.name as string) || u.email?.split('@')[0] || 'You',
-        isAdmin: await isAdminUser(supabase, u.id),
       }
 
       const { data: convos } = await supabase

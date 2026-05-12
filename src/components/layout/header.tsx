@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { User, LogOut, Heart, FileText, MessageCircle, Settings, Shield, Search, MapPin, Menu as MenuIcon, Plus, Mail, LogIn, UserPlus } from 'lucide-react'
+import { User, LogOut, Heart, FileText, MessageCircle, Settings, Search, MapPin, Menu as MenuIcon, Plus, Mail, LogIn, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS: { label: string; slug: string; sub: { label: string; slug: string }[] }[] = [
@@ -78,7 +78,6 @@ interface HeaderUser {
   id: string
   email: string
   name: string
-  isAdmin?: boolean
 }
 
 interface HeaderProps {
@@ -364,18 +363,7 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
                         )}
                       </Link>
                     ))}
-                    {user.isAdmin && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm border-t hover:bg-amber-50 transition-colors"
-                        style={{ color: '#a16207', borderColor: '#f0f0f0' }}
-                      >
-                        <Shield size={14} />
-                        <span className="flex-1 font-semibold">Admin panel</span>
-                      </Link>
-                    )}
-                    <div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
+<div className="border-t mt-1" style={{ borderColor: '#f0f0f0' }}>
                       <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"

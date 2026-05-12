@@ -30,10 +30,11 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const isAdminRoute = path.startsWith('/admin') || path.startsWith('/api/admin')
+  const isApiRoute = path.startsWith('/api/')
 
   if (isAdminRoute) {
     if (!user) {
-      if (path.startsWith('/api/')) {
+      if (isApiRoute) {
         return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
       }
       const redirect = request.nextUrl.clone()
@@ -42,13 +43,23 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(redirect)
     }
     if (!(await isAdminUser(supabase, user.id))) {
-      if (path.startsWith('/api/')) {
+      if (isApiRoute) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       const redirect = request.nextUrl.clone()
       redirect.pathname = '/'
       return NextResponse.redirect(redirect)
     }
+    return supabaseResponse
+  }
+
+  // Logged-in admin visiting any non-admin HTML route → bounce to /admin.
+  // API routes pass through so admin pages can still call backend endpoints.
+  if (user && !isApiRoute && await isAdminUser(supabase, user.id)) {
+    const redirect = request.nextUrl.clone()
+    redirect.pathname = '/admin'
+    redirect.search = ''
+    return NextResponse.redirect(redirect)
   }
 
   return supabaseResponse

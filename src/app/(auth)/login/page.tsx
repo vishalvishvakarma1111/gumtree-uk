@@ -27,7 +27,7 @@ function LoginForm() {
     setLoading(true)
     try {
       const supabase = createClient()
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -35,7 +35,19 @@ function LoginForm() {
         setError(authError.message)
         return
       }
-      router.push(next)
+
+      let destination = next
+      const userId = authData.user?.id
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', userId)
+          .maybeSingle<{ is_admin: boolean }>()
+        if (profile?.is_admin === true) destination = '/admin'
+      }
+
+      router.push(destination)
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')

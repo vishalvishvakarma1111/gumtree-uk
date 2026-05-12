@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, FileCheck, Flag, LogOut } from 'lucide-react'
+import { LayoutDashboard, FileCheck, Flag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/admin'
+import AdminSignOut from './admin-signout'
 
 const NAV = [
   { label: 'Dashboard',          href: '/admin',          Icon: LayoutDashboard },
@@ -31,10 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <div className="flex items-center gap-3 text-xs">
             <span className="text-gray-500 hidden sm:inline">{user.email}</span>
-            <Link href="/" className="flex items-center gap-1 font-semibold hover:underline" style={{ color: '#0D475C' }}>
-              <LogOut size={12} />
-              Exit admin
-            </Link>
+            <AdminSignOut />
           </div>
         </div>
       </header>
