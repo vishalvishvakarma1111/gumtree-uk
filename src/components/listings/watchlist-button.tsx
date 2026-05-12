@@ -41,6 +41,7 @@ export function WatchlistButton({ listingId, initialSaved = false, size = 18 }: 
         return
       }
       if (!res.ok) throw new Error()
+      router.refresh()
     } catch {
       setSaved(!next)
     } finally {

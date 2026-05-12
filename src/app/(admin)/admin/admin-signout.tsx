@@ -28,7 +28,7 @@ export default function AdminSignOut() {
       onClick={handleSignOut}
       disabled={loading}
       className="flex items-center gap-1 font-semibold hover:underline disabled:opacity-60"
-      style={{ color: '#0D475C' }}
+      style={{ color: '#F0ECE6' }}
     >
       <LogOut size={12} />
       {loading ? 'Signing out…' : 'Sign out'}

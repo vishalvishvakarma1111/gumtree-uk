@@ -9,6 +9,7 @@ interface Props {
   listing: Listing
   variant?: 'grid' | 'list'
   distanceMiles?: number
+  initialSaved?: boolean
 }
 
 const PRICE_GREEN = '#15803d'
@@ -19,7 +20,7 @@ function formatDistance(miles: number): string {
   return `${Math.round(miles)} mi away`
 }
 
-export function ListingCard({ listing, variant = 'grid', distanceMiles }: Props) {
+export function ListingCard({ listing, variant = 'grid', distanceMiles, initialSaved = false }: Props) {
   if (variant === 'list') {
     return (
       <div className="relative bg-white border rounded-xl overflow-hidden hover:shadow-md transition-shadow" style={{ borderColor: '#dbdadb' }}>
@@ -69,7 +70,7 @@ export function ListingCard({ listing, variant = 'grid', distanceMiles }: Props)
           </div>
         </Link>
         <div className="absolute bottom-3 right-3 z-10">
-          <WatchlistButton listingId={listing.id} size={16} />
+          <WatchlistButton listingId={listing.id} size={16} initialSaved={initialSaved} />
         </div>
       </div>
     )
@@ -99,7 +100,7 @@ export function ListingCard({ listing, variant = 'grid', distanceMiles }: Props)
           )}
           {/* Heart sits on image bottom-right, translated down so half overflows */}
           <div className="absolute right-2 bottom-0 z-10 translate-y-1/2">
-            <WatchlistButton listingId={listing.id} />
+            <WatchlistButton listingId={listing.id} initialSaved={initialSaved} />
           </div>
         </div>
         <div className="px-3 pt-5 pb-3 flex-1">
