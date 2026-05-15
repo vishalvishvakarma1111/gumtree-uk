@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server'
 import { lookupPostcode, type PostcodeCoords } from '@/lib/postcode'
 import { boundingBox, haversineMiles, parseRadius } from '@/lib/geo'
 import { fetchCategoryTree, findNode, type CategoryNode } from '@/lib/categories'
+import { datePostedRange } from '@/lib/date-filter'
 import { Listing } from '@/types'
 
 interface SP {
@@ -24,6 +25,8 @@ interface SP {
   max_price?: string
   conditions?: string
   urgent?: string
+  posted?: string
+  tz?: string
   sort?: string
   page?: string
   view?: string
@@ -67,6 +70,10 @@ async function fetchFromDb(
     if (params.max_price) query = query.lte('price', Number(params.max_price))
     if (params.conditions) query = query.in('condition', params.conditions.split(','))
     if (params.urgent === '1') query = query.eq('is_urgent', true)
+
+    const postedRange = datePostedRange(params.posted, params.tz)
+    if (postedRange?.gte) query = query.gte('created_at', postedRange.gte)
+    if (postedRange?.lt) query = query.lt('created_at', postedRange.lt)
 
     if (coords) {
       const box = boundingBox(coords.latitude, coords.longitude, parseRadius(params.radius))
@@ -158,6 +165,18 @@ function applyFilters(
 
   if (params.urgent === '1') {
     out = out.filter(l => l.is_urgent)
+  }
+
+  const postedRange = datePostedRange(params.posted, params.tz)
+  if (postedRange) {
+    const gte = postedRange.gte ? new Date(postedRange.gte).getTime() : null
+    const lt = postedRange.lt ? new Date(postedRange.lt).getTime() : null
+    out = out.filter(l => {
+      const t = new Date(l.created_at).getTime()
+      if (gte !== null && t < gte) return false
+      if (lt !== null && t >= lt) return false
+      return true
+    })
   }
 
   switch (params.sort) {
@@ -254,6 +273,8 @@ export default async function BrowsePage({
     if (params.max_price) sp.set('max_price', params.max_price)
     if (params.conditions) sp.set('conditions', params.conditions)
     if (params.urgent) sp.set('urgent', params.urgent)
+    if (params.posted) sp.set('posted', params.posted)
+    if (params.tz) sp.set('tz', params.tz)
     if (params.sort) sp.set('sort', params.sort)
     sp.set('page', String(p))
     return `/browse?${sp.toString()}`
@@ -334,6 +355,7 @@ export default async function BrowsePage({
                 defaultMaxPrice={params.max_price ?? ''}
                 defaultConditions={params.conditions?.split(',') ?? []}
                 defaultUrgent={params.urgent === '1'}
+                defaultPosted={params.posted ?? ''}
               />
             </Suspense>
           </aside>

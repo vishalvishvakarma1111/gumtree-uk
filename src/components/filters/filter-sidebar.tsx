@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { CategoryNode } from '@/lib/categories'
+import { DATE_POSTED_OPTIONS } from '@/lib/date-filter'
 
 const CONDITIONS: { label: string; value: string }[] = [
   { label: 'New', value: 'new' },
@@ -20,6 +21,7 @@ interface FilterSidebarProps {
   defaultMaxPrice?: string
   defaultConditions?: string[]
   defaultUrgent?: boolean
+  defaultPosted?: string
 }
 
 function pickInitialExpanded(tree: CategoryNode[], selected: string): string | null {
@@ -37,6 +39,7 @@ export default function FilterSidebar({
   defaultMaxPrice = '',
   defaultConditions = [],
   defaultUrgent = false,
+  defaultPosted = '',
 }: FilterSidebarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -50,8 +53,18 @@ export default function FilterSidebar({
   const [conditions, setConditions] = useState<string[]>(defaultConditions)
   const [urgent, setUrgent] = useState(defaultUrgent)
   const [shipping, setShipping] = useState(false)
+  const [posted, setPosted] = useState(defaultPosted)
+
+  function detectTz(): string {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+    } catch {
+      return ''
+    }
+  }
 
   function applyFilters() {
+    const tz = detectTz()
     const params = new URLSearchParams(searchParams.toString())
     if (category) params.set('category', category)
     else params.delete('category')
@@ -63,6 +76,14 @@ export default function FilterSidebar({
     else params.delete('conditions')
     if (urgent) params.set('urgent', '1')
     else params.delete('urgent')
+    if (posted) {
+      params.set('posted', posted)
+      if (tz) params.set('tz', tz)
+      else params.delete('tz')
+    } else {
+      params.delete('posted')
+      params.delete('tz')
+    }
     params.delete('page')
     router.push(`/browse?${params.toString()}`)
   }
@@ -80,6 +101,7 @@ export default function FilterSidebar({
     setConditions([])
     setUrgent(false)
     setShipping(false)
+    setPosted('')
     router.push(`/browse?${p.toString()}`)
   }
 
@@ -273,6 +295,45 @@ export default function FilterSidebar({
               />
               <span className="text-sm text-gray-700 group-hover:text-gray-900">
                 {c.label}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Date Posted */}
+      <div className="px-4 py-4 border-b" style={{ borderColor: '#f0f0f0' }}>
+        <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+          Date Posted
+        </p>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
+            <input
+              type="radio"
+              name="posted"
+              value=""
+              checked={posted === ''}
+              onChange={() => setPosted('')}
+              className="w-3.5 h-3.5 cursor-pointer"
+              style={{ accentColor: '#0D475C' }}
+            />
+            <span className="text-sm text-gray-700 group-hover:text-gray-900">
+              Any time
+            </span>
+          </label>
+          {DATE_POSTED_OPTIONS.map(o => (
+            <label key={o.value} className="flex items-center gap-2.5 cursor-pointer group">
+              <input
+                type="radio"
+                name="posted"
+                value={o.value}
+                checked={posted === o.value}
+                onChange={() => setPosted(o.value)}
+                className="w-3.5 h-3.5 cursor-pointer"
+                style={{ accentColor: '#0D475C' }}
+              />
+              <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                {o.label}
               </span>
             </label>
           ))}
