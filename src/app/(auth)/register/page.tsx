@@ -21,8 +21,28 @@ function RegisterForm() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  async function handleGoogleSignIn() {
+    setError('')
+    setOauthLoading(true)
+    try {
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (oauthError) setError(oauthError.message)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setOauthLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -94,11 +114,13 @@ function RegisterForm() {
         <div className="space-y-2.5 mb-5">
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 border py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={handleGoogleSignIn}
+            disabled={oauthLoading}
+            className="w-full flex items-center justify-center gap-3 border py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
             style={{ borderColor: '#dbdadb' }}
           >
             <span className="font-bold text-base" style={{ color: '#4285F4' }}>G</span>
-            Continue with Google
+            {oauthLoading ? 'Redirecting…' : 'Continue with Google'}
           </button>
           <button
             type="button"

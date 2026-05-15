@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
@@ -10,12 +10,40 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const next = searchParams.get('next') || '/'
+  const callbackError = searchParams.get('error')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace(next)
+    })
+  }, [next, router])
+
+  async function handleGoogleSignIn() {
+    setError('')
+    setOauthLoading(true)
+    try {
+      const supabase = createClient()
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (oauthError) setError(oauthError.message)
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setOauthLoading(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,15 +99,16 @@ function LoginForm() {
           <p className="text-xs text-gray-400 mt-1">Welcome back!</p>
         </div>
 
-        {/* Social login (UI only) */}
         <div className="space-y-2.5 mb-5">
           <button
             type="button"
-            className="w-full flex items-center justify-center gap-3 border py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            onClick={handleGoogleSignIn}
+            disabled={oauthLoading}
+            className="w-full flex items-center justify-center gap-3 border py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-60"
             style={{ borderColor: '#dbdadb' }}
           >
             <span className="font-bold text-base" style={{ color: '#4285F4' }}>G</span>
-            Continue with Google
+            {oauthLoading ? 'Redirecting…' : 'Continue with Google'}
           </button>
           <button
             type="button"
@@ -97,9 +126,9 @@ function LoginForm() {
           <div className="flex-1 h-px" style={{ backgroundColor: '#e8e8e8' }} />
         </div>
 
-        {error && (
+        {(error || callbackError) && (
           <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-            {error}
+            {error || callbackError}
           </div>
         )}
 
