@@ -30,6 +30,7 @@ interface SP {
   sort?: string
   page?: string
   view?: string
+  [key: string]: string | undefined
 }
 
 const PAGE_SIZE = 20
@@ -70,6 +71,12 @@ async function fetchFromDb(
     if (params.max_price) query = query.lte('price', Number(params.max_price))
     if (params.conditions) query = query.in('condition', params.conditions.split(','))
     if (params.urgent === '1') query = query.eq('is_urgent', true)
+
+    for (const [key, val] of Object.entries(params)) {
+      if (key.startsWith('attr_') && val) {
+        query = query.filter(`attributes->>${key.slice(5)}`, 'eq', val)
+      }
+    }
 
     const postedRange = datePostedRange(params.posted, params.tz)
     if (postedRange?.gte) query = query.gte('created_at', postedRange.gte)
@@ -167,6 +174,13 @@ function applyFilters(
     out = out.filter(l => l.is_urgent)
   }
 
+  for (const [key, val] of Object.entries(params)) {
+    if (key.startsWith('attr_') && val) {
+      const attrKey = key.slice(5)
+      out = out.filter(l => String(l.attributes?.[attrKey] ?? '') === val)
+    }
+  }
+
   const postedRange = datePostedRange(params.posted, params.tz)
   if (postedRange) {
     const gte = postedRange.gte ? new Date(postedRange.gte).getTime() : null
@@ -245,6 +259,10 @@ export default async function BrowsePage({
   searchParams: Promise<SP>
 }) {
   const params = await searchParams
+  const defaultAttrs: Record<string, string> = {}
+  for (const [k, v] of Object.entries(params)) {
+    if (k.startsWith('attr_') && v) defaultAttrs[k.slice(5)] = v
+  }
   const supabaseForTree = await createClient()
   const tree = await fetchCategoryTree(supabaseForTree)
   const coords = params.postcode ? await lookupPostcode(params.postcode) : null
@@ -276,6 +294,9 @@ export default async function BrowsePage({
     if (params.posted) sp.set('posted', params.posted)
     if (params.tz) sp.set('tz', params.tz)
     if (params.sort) sp.set('sort', params.sort)
+    for (const [k, v] of Object.entries(defaultAttrs)) {
+      sp.set(`attr_${k}`, v)
+    }
     sp.set('page', String(p))
     return `/browse?${sp.toString()}`
   }
@@ -356,6 +377,7 @@ export default async function BrowsePage({
                 defaultConditions={params.conditions?.split(',') ?? []}
                 defaultUrgent={params.urgent === '1'}
                 defaultPosted={params.posted ?? ''}
+                defaultAttrs={defaultAttrs}
               />
             </Suspense>
           </aside>

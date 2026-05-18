@@ -46,6 +46,13 @@ export async function GET(req: NextRequest) {
     const urgent = sp.get('urgent')
     if (urgent === '1') query = query.eq('is_urgent', true)
 
+    for (const [key, val] of sp.entries()) {
+      if (key.startsWith('attr_') && val) {
+        const attrKey = key.slice(5)
+        query = query.filter(`attributes->>${attrKey}`, 'eq', val)
+      }
+    }
+
     const sort = ALLOWED_SORTS[sp.get('sort') ?? 'newest'] ?? ALLOWED_SORTS.newest
     query = query.order(sort.column, { ascending: sort.ascending, nullsFirst: false })
 
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
 
     const body = await req.json()
-    const { title, description, price, price_type, condition, category_id, location, images, offers_shipping, is_urgent } = body
+    const { title, description, price, price_type, condition, category_id, location, images, offers_shipping, is_urgent, attributes } = body
 
     if (!title || !category_id || !location) {
       return NextResponse.json({ error: 'Title, category, and location are required' }, { status: 400 })
@@ -102,6 +109,7 @@ export async function POST(req: NextRequest) {
         images: images ?? [],
         offers_shipping: offers_shipping ?? false,
         is_urgent: is_urgent ?? false,
+        attributes: attributes && typeof attributes === 'object' ? attributes : {},
         status: 'pending',
       })
       .select('id')

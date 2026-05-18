@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import type { CategoryNode } from '@/lib/categories'
 import { DATE_POSTED_OPTIONS } from '@/lib/date-filter'
+import { getCategoryAttrConfig } from '@/lib/category-attributes'
 
 const CONDITIONS: { label: string; value: string }[] = [
   { label: 'New', value: 'new' },
@@ -22,6 +23,7 @@ interface FilterSidebarProps {
   defaultConditions?: string[]
   defaultUrgent?: boolean
   defaultPosted?: string
+  defaultAttrs?: Record<string, string>
 }
 
 function pickInitialExpanded(tree: CategoryNode[], selected: string): string | null {
@@ -40,6 +42,7 @@ export default function FilterSidebar({
   defaultConditions = [],
   defaultUrgent = false,
   defaultPosted = '',
+  defaultAttrs = {},
 }: FilterSidebarProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -54,6 +57,9 @@ export default function FilterSidebar({
   const [urgent, setUrgent] = useState(defaultUrgent)
   const [shipping, setShipping] = useState(false)
   const [posted, setPosted] = useState(defaultPosted)
+  const [attrValues, setAttrValues] = useState<Record<string, string>>(defaultAttrs)
+
+  const attrConfig = getCategoryAttrConfig(category)
 
   function detectTz(): string {
     try {
@@ -84,6 +90,12 @@ export default function FilterSidebar({
       params.delete('posted')
       params.delete('tz')
     }
+    for (const key of [...params.keys()]) {
+      if (key.startsWith('attr_')) params.delete(key)
+    }
+    for (const [k, v] of Object.entries(attrValues)) {
+      if (v && v !== 'false') params.set(`attr_${k}`, v)
+    }
     params.delete('page')
     router.push(`/browse?${params.toString()}`)
   }
@@ -102,6 +114,7 @@ export default function FilterSidebar({
     setUrgent(false)
     setShipping(false)
     setPosted('')
+    setAttrValues({})
     router.push(`/browse?${p.toString()}`)
   }
 
@@ -113,6 +126,7 @@ export default function FilterSidebar({
 
   function pickCategory(slug: string) {
     setCategory(slug)
+    setAttrValues({})
   }
 
   function toggleExpanded(slug: string) {
@@ -235,6 +249,45 @@ export default function FilterSidebar({
           })}
         </div>
       </div>
+
+      {/* Category-specific attribute filters */}
+      {attrConfig && attrConfig.filters.length > 0 && (
+        <div className="px-4 py-4 border-b" style={{ borderColor: '#f0f0f0' }}>
+          {attrConfig.filters.map(filter => (
+            <div key={filter.key} className="mb-4 last:mb-0">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                {filter.label}
+              </p>
+              {filter.type === 'boolean' ? (
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={attrValues[filter.key] === 'true'}
+                    onChange={e => setAttrValues(a => ({ ...a, [filter.key]: e.target.checked ? 'true' : '' }))}
+                    className="w-3.5 h-3.5 rounded cursor-pointer"
+                    style={{ accentColor: '#0D475C' }}
+                  />
+                  <span className="text-sm text-gray-700">{filter.label}</span>
+                </label>
+              ) : (
+                <select
+                  value={attrValues[filter.key] ?? ''}
+                  onChange={e => setAttrValues(a => ({ ...a, [filter.key]: e.target.value }))}
+                  className="w-full border rounded px-2.5 py-1.5 text-sm outline-none bg-white"
+                  style={{ borderColor: '#dbdadb' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+                  onBlur={e => (e.currentTarget.style.borderColor = '#dbdadb')}
+                >
+                  <option value="">Any</option>
+                  {filter.options?.map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Price */}
       <div className="px-4 py-4 border-b" style={{ borderColor: '#f0f0f0' }}>

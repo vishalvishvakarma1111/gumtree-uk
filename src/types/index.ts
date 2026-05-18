@@ -38,6 +38,7 @@ export interface Listing {
   views_count: number
   created_at: string
   expires_at: string
+  attributes: Record<string, string | number | boolean>
   user_profiles?: UserProfile
   categories?: Category
 }

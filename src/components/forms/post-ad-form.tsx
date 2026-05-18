@@ -3,20 +3,13 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, Upload, X, Truck, Zap, ChevronLeft, ChevronRight, Loader2, Image as ImageIcon } from 'lucide-react'
+import { getCategoryConfig, getAllAttributeFields, type AttributeField } from '@/lib/category-fields'
 
 interface PostAdFormProps {
   categorySlug: string
   categoryName: string
   subcategories: { slug: string; name: string }[]
 }
-
-const CONDITIONS = [
-  { value: 'new',       label: 'New' },
-  { value: 'like_new',  label: 'Like New' },
-  { value: 'good',      label: 'Good' },
-  { value: 'fair',      label: 'Fair' },
-  { value: 'parts_only',label: 'Parts Only' },
-]
 
 const PRICE_TYPES = [
   { value: 'fixed',      label: 'Fixed price' },
@@ -30,8 +23,11 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
   const router = useRouter()
   const [step, setStep] = useState(0)
 
-  // Form fields
   const [subcategorySlug, setSubcategorySlug] = useState('')
+
+  // config is derived from both slugs — reactive to subcategory selection
+  const config = getCategoryConfig(categorySlug, subcategorySlug || undefined)
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
@@ -40,13 +36,12 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
   const [location, setLocation] = useState('')
   const [offersShipping, setOffersShipping] = useState(false)
   const [isUrgent, setIsUrgent] = useState(false)
+  const [attrs, setAttrsState] = useState<Record<string, string>>({})
 
-  // Photo state
   const [photos, setPhotos] = useState<string[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // AI state
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
   const [titleAiLoading, setTitleAiLoading] = useState(false)
@@ -54,45 +49,47 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
   const [priceAiLoading, setPriceAiLoading] = useState(false)
   const [priceSuggestion, setPriceSuggestion] = useState<{ min: number | null; max: number | null; reasoning: string } | null>(null)
 
-  // Submit state
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  async function handleGenerateDescription() {
-    if (!title.trim()) {
-      setErrors(e => ({ ...e, title: 'Enter a title first' }))
-      return
+  function setAttr(key: string, value: string) {
+    setAttrsState(prev => ({ ...prev, [key]: value }))
+    setErrors(prev => { const next = { ...prev }; delete next[`attr_${key}`]; return next })
+  }
+
+  function handleSubcategoryChange(slug: string) {
+    setSubcategorySlug(slug)
+    setErrors(er => ({ ...er, subcategory: '' }))
+    const newConfig = getCategoryConfig(categorySlug, slug || undefined)
+    // Reset attrs to presets only — clears stale fields from previous subcategory
+    setAttrsState(newConfig.presetAttrs ?? {})
+    // Reset condition to a valid value for the new config
+    if (newConfig.conditionOptions.length > 0) {
+      const defaultCond = newConfig.conditionOptions[2]?.value ?? newConfig.conditionOptions[0]?.value ?? 'good'
+      setCondition(defaultCond)
     }
-    setAiLoading(true)
-    setAiError('')
+  }
+
+  async function handleGenerateDescription() {
+    if (!title.trim()) { setErrors(e => ({ ...e, title: 'Enter a title first' })); return }
+    setAiLoading(true); setAiError('')
     try {
       const res = await fetch('/api/ai/generate-description', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          category: categoryName,
-          condition,
-          price: priceType !== 'free' && price ? Number(price) : undefined,
-        }),
+        body: JSON.stringify({ title, category: categoryName, condition, price: priceType !== 'free' && price ? Number(price) : undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       setDescription(data.description)
     } catch (err: unknown) {
       setAiError(err instanceof Error ? err.message : 'Failed to generate description')
-    } finally {
-      setAiLoading(false)
-    }
+    } finally { setAiLoading(false) }
   }
 
   async function handleImproveTitle() {
-    if (!title.trim()) {
-      setErrors(e => ({ ...e, title: 'Enter a title first' }))
-      return
-    }
-    setTitleAiLoading(true)
-    setAiError('')
+    if (!title.trim()) { setErrors(e => ({ ...e, title: 'Enter a title first' })); return }
+    setTitleAiLoading(true); setAiError('')
     try {
       const res = await fetch('/api/ai/improve-title', {
         method: 'POST',
@@ -104,18 +101,12 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
       setTitleSuggestions(data.suggestions ?? [])
     } catch (err: unknown) {
       setAiError(err instanceof Error ? err.message : 'Failed to improve title')
-    } finally {
-      setTitleAiLoading(false)
-    }
+    } finally { setTitleAiLoading(false) }
   }
 
   async function handleSuggestPrice() {
-    if (!title.trim()) {
-      setErrors(e => ({ ...e, title: 'Enter a title first' }))
-      return
-    }
-    setPriceAiLoading(true)
-    setAiError('')
+    if (!title.trim()) { setErrors(e => ({ ...e, title: 'Enter a title first' })); return }
+    setPriceAiLoading(true); setAiError('')
     try {
       const res = await fetch('/api/ai/suggest-price', {
         method: 'POST',
@@ -127,25 +118,20 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
       setPriceSuggestion({ min: data.min, max: data.max, reasoning: data.reasoning })
     } catch (err: unknown) {
       setAiError(err instanceof Error ? err.message : 'Failed to suggest price')
-    } finally {
-      setPriceAiLoading(false)
-    }
+    } finally { setPriceAiLoading(false) }
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
-
     const remaining = 10 - photos.length
     if (remaining <= 0) return
     const toUpload = files.slice(0, remaining)
-
     setUploadingPhoto(true)
     try {
       const results = await Promise.all(
         toUpload.map(async file => {
-          const fd = new FormData()
-          fd.append('file', file)
+          const fd = new FormData(); fd.append('file', file)
           const res = await fetch('/api/upload', { method: 'POST', body: fd })
           const data = await res.json()
           if (!res.ok) throw new Error(data.error)
@@ -161,9 +147,7 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
     }
   }
 
-  function removePhoto(idx: number) {
-    setPhotos(p => p.filter((_, i) => i !== idx))
-  }
+  function removePhoto(idx: number) { setPhotos(p => p.filter((_, i) => i !== idx)) }
 
   function movePhoto(idx: number, direction: -1 | 1) {
     setPhotos(p => {
@@ -178,14 +162,13 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
   function validateStep(): boolean {
     const e: Record<string, string> = {}
     if (step === 0) {
-      if (subcategories.length > 0 && !subcategorySlug) {
-        e.subcategory = 'Pick a more specific category'
-      }
+      if (subcategories.length > 0 && !subcategorySlug) e.subcategory = 'Pick a more specific category'
       if (!title.trim()) e.title = 'Title is required'
       if (!description.trim()) e.description = 'Description is required'
-      if (priceType !== 'free' && (!price || isNaN(Number(price)))) {
-        e.price = 'Enter a valid price'
-      }
+      if (config.showPrice && priceType !== 'free' && (!price || isNaN(Number(price)))) e.price = 'Enter a valid price'
+      getAllAttributeFields(config).forEach(field => {
+        if (field.required && !attrs[field.key]?.trim()) e[`attr_${field.key}`] = `${field.label} is required`
+      })
     }
     if (step === 2) {
       if (!location.trim()) e.location = 'Location is required'
@@ -194,28 +177,33 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
     return Object.keys(e).length === 0
   }
 
-  function nextStep() {
-    if (validateStep()) setStep(s => s + 1)
-  }
+  function nextStep() { if (validateStep()) setStep(s => s + 1) }
 
   async function handleSubmit() {
     if (!validateStep()) return
     setSubmitting(true)
     try {
+      const attributes: Record<string, string | number> = {}
+      getAllAttributeFields(config).forEach(field => {
+        const val = attrs[field.key]
+        if (!val) return
+        attributes[field.key] = field.type === 'number' ? Number(val) : val
+      })
       const res = await fetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
           description,
-          price: priceType !== 'free' ? Number(price) : null,
-          price_type: priceType,
-          condition,
+          price: config.showPrice ? (priceType !== 'free' ? Number(price) : null) : null,
+          price_type: config.showPriceType ? priceType : 'fixed',
+          condition: config.showCondition ? condition : 'good',
           category_id: subcategorySlug || categorySlug,
           location,
           images: photos,
-          offers_shipping: offersShipping,
+          offers_shipping: config.showShipping ? offersShipping : false,
           is_urgent: isUrgent,
+          attributes,
         }),
       })
       const data = await res.json()
@@ -224,34 +212,26 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
       router.refresh()
     } catch {
       setErrors({ submit: 'Failed to post ad. Please try again.' })
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Stepper */}
       <div className="flex items-center gap-2 mb-8">
-        {/* Step 0 = choose category (done) */}
         {['Choose category', ...STEPS].map((label, i) => (
           <div key={label} className="flex items-center gap-2">
             <div
               className="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold flex-shrink-0"
               style={
-                i < step + 1
-                  ? { backgroundColor: '#0D475C', color: '#fff' }
-                  : i === step + 1
+                i <= step
                   ? { backgroundColor: '#0D475C', color: '#fff' }
                   : { backgroundColor: '#e8e8e8', color: '#aaa' }
               }
             >
               {i < step + 1 ? '✓' : i + 1}
             </div>
-            <span
-              className="text-xs font-medium hidden sm:block"
-              style={{ color: i <= step + 1 ? '#0D475C' : '#aaa' }}
-            >
+            <span className="text-xs font-medium hidden sm:block" style={{ color: i <= step + 1 ? '#0D475C' : '#aaa' }}>
               {label}
             </span>
             {i < 4 && <div className="w-6 h-px flex-shrink-0" style={{ backgroundColor: '#dbdadb' }} />}
@@ -263,55 +243,52 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
         {/* Step header */}
         <div className="px-6 py-4 border-b" style={{ borderColor: '#f0f0f0' }}>
           <p className="text-xs text-gray-400 mb-0.5">Step {step + 2} of 5 · {categoryName}</p>
-          <h2 className="font-bold text-base" style={{ color: '#0D475C' }}>
-            {STEPS[step]}
-          </h2>
+          <h2 className="font-bold text-base" style={{ color: '#0D475C' }}>{STEPS[step]}</h2>
         </div>
 
         <div className="p-6 space-y-5">
+
           {/* ── Step 0: Ad details ── */}
           {step === 0 && (
             <>
+              {/* Subcategory */}
               {subcategories.length > 0 && (
-                <Field
-                  label={`Sub-category in ${categoryName}`}
-                  error={errors.subcategory}
-                >
+                <Field label="Sub-category" error={errors.subcategory}>
                   <select
                     value={subcategorySlug}
-                    onChange={e => {
-                      setSubcategorySlug(e.target.value)
-                      setErrors(er => ({ ...er, subcategory: '' }))
-                    }}
+                    onChange={e => handleSubcategoryChange(e.target.value)}
                     className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none bg-white"
-                    style={{
-                      borderColor: errors.subcategory ? '#e75462' : '#dbdadb',
-                    }}
-                    onFocus={e =>
-                      (e.currentTarget.style.borderColor = '#0D475C')
-                    }
-                    onBlur={e =>
-                      (e.currentTarget.style.borderColor = errors.subcategory
-                        ? '#e75462'
-                        : '#dbdadb')
-                    }
+                    style={{ borderColor: errors.subcategory ? '#e75462' : '#dbdadb' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+                    onBlur={e => (e.currentTarget.style.borderColor = errors.subcategory ? '#e75462' : '#dbdadb')}
                   >
                     <option value="">Choose one…</option>
-                    {subcategories.map(s => (
-                      <option key={s.slug} value={s.slug}>
-                        {s.name}
-                      </option>
-                    ))}
+                    {subcategories.map(s => <option key={s.slug} value={s.slug}>{s.name}</option>)}
                   </select>
                 </Field>
               )}
-              <Field label="Title" error={errors.title}>
+
+              {/* Primary attributes — identifying fields shown before title (e.g. make/model/year for cars) */}
+              {config.primaryAttributes.length > 0 && (
+                <>
+                  <AttrFieldGroup
+                    fields={config.primaryAttributes}
+                    attrs={attrs}
+                    errors={errors}
+                    setAttr={setAttr}
+                  />
+                  <div className="border-t" style={{ borderColor: '#f0f0f0' }} />
+                </>
+              )}
+
+              {/* Title */}
+              <Field label="Ad Title" error={errors.title}>
                 <div className="relative">
                   <input
                     type="text"
                     value={title}
                     onChange={e => { setTitle(e.target.value); setErrors(er => ({ ...er, title: '' })) }}
-                    placeholder={`e.g. ${categoryName === 'Electronics' ? 'iPhone 14 Pro 256GB Space Black' : `${categoryName} item for sale`}`}
+                    placeholder={config.titlePlaceholder}
                     maxLength={100}
                     className="w-full border rounded-lg px-3 py-2.5 pr-32 text-sm outline-none"
                     style={{ borderColor: errors.title ? '#e75462' : '#dbdadb' }}
@@ -348,13 +325,14 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
                 )}
               </Field>
 
+              {/* Description */}
               <Field label="Description" error={errors.description}>
                 <div className="relative">
                   <textarea
                     rows={6}
                     value={description}
                     onChange={e => { setDescription(e.target.value); setErrors(er => ({ ...er, description: '' })) }}
-                    placeholder="Describe your item — condition, what's included, reason for selling…"
+                    placeholder={config.descriptionPlaceholder}
                     className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none resize-none"
                     style={{ borderColor: errors.description ? '#e75462' : '#dbdadb' }}
                     onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
@@ -374,149 +352,138 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
                 {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
               </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Price type">
-                  <select
-                    value={priceType}
-                    onChange={e => setPriceType(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none bg-white"
-                    style={{ borderColor: '#dbdadb' }}
-                  >
-                    {PRICE_TYPES.map(pt => (
-                      <option key={pt.value} value={pt.value}>{pt.label}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                {priceType !== 'free' && (
-                  <Field label="Price (£)" error={errors.price}>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">£</span>
-                      <input
-                        type="number"
-                        value={price}
-                        onChange={e => { setPrice(e.target.value); setErrors(er => ({ ...er, price: '' })) }}
-                        placeholder="0.00"
-                        min={0}
-                        className="w-full border rounded-lg pl-7 pr-24 py-2.5 text-sm outline-none"
-                        style={{ borderColor: errors.price ? '#e75462' : '#dbdadb' }}
-                        onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
-                        onBlur={e => (e.currentTarget.style.borderColor = errors.price ? '#e75462' : '#dbdadb')}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSuggestPrice}
-                        disabled={priceAiLoading}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded border transition-colors disabled:opacity-60"
-                        style={{ color: '#7c3aed', borderColor: '#ddd4fe', backgroundColor: '#f5f3ff' }}
-                      >
-                        {priceAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                        {priceAiLoading ? '…' : 'Suggest'}
-                      </button>
-                    </div>
-                    {priceSuggestion && (priceSuggestion.min !== null || priceSuggestion.max !== null) && (
-                      <div className="mt-2 px-3 py-2 rounded-lg border text-xs" style={{ borderColor: '#ddd4fe', backgroundColor: '#fafafe' }}>
-                        <p className="font-semibold" style={{ color: '#7c3aed' }}>
-                          Suggested: £{priceSuggestion.min ?? '?'} – £{priceSuggestion.max ?? '?'}
-                        </p>
-                        {priceSuggestion.reasoning && <p className="text-gray-600 mt-0.5">{priceSuggestion.reasoning}</p>}
-                        <div className="flex gap-2 mt-1.5">
-                          {priceSuggestion.min !== null && (
-                            <button
-                              type="button"
-                              onClick={() => { setPrice(String(priceSuggestion.min)); setPriceSuggestion(null) }}
-                              className="text-xs font-semibold underline"
-                              style={{ color: '#7c3aed' }}
-                            >
-                              Use £{priceSuggestion.min}
-                            </button>
-                          )}
-                          {priceSuggestion.max !== null && (
-                            <button
-                              type="button"
-                              onClick={() => { setPrice(String(priceSuggestion.max)); setPriceSuggestion(null) }}
-                              className="text-xs font-semibold underline"
-                              style={{ color: '#7c3aed' }}
-                            >
-                              Use £{priceSuggestion.max}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </Field>
-                )}
-              </div>
-
-              <Field label="Condition">
-                <div className="flex flex-wrap gap-2">
-                  {CONDITIONS.map(c => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => setCondition(c.value)}
-                      className="px-4 py-2 text-sm rounded-full border font-medium transition-colors"
-                      style={
-                        condition === c.value
-                          ? { backgroundColor: '#0D475C', color: '#fff', borderColor: '#0D475C' }
-                          : { backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }
-                      }
-                    >
-                      {c.label}
-                    </button>
-                  ))}
+              {/* Secondary attributes — additional detail fields after description */}
+              {config.secondaryAttributes.length > 0 && (
+                <div className="border-t pt-4" style={{ borderColor: '#f0f0f0' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: '#0D475C' }}>
+                    {categoryName} details
+                  </p>
+                  <AttrFieldGroup
+                    fields={config.secondaryAttributes}
+                    attrs={attrs}
+                    errors={errors}
+                    setAttr={setAttr}
+                  />
                 </div>
-              </Field>
+              )}
+
+              {/* Price — hidden for Jobs */}
+              {config.showPrice && (
+                <div className={`grid gap-4 ${config.showPriceType ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {config.showPriceType && (
+                    <Field label="Price type">
+                      <select
+                        value={priceType}
+                        onChange={e => setPriceType(e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none bg-white"
+                        style={{ borderColor: '#dbdadb' }}
+                      >
+                        {PRICE_TYPES.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
+                      </select>
+                    </Field>
+                  )}
+
+                  {(!config.showPriceType || priceType !== 'free') && (
+                    <Field label={config.priceLabel} error={errors.price}>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">£</span>
+                        <input
+                          type="number"
+                          value={price}
+                          onChange={e => { setPrice(e.target.value); setErrors(er => ({ ...er, price: '' })) }}
+                          placeholder="0.00"
+                          min={0}
+                          className="w-full border rounded-lg pl-7 pr-24 py-2.5 text-sm outline-none"
+                          style={{ borderColor: errors.price ? '#e75462' : '#dbdadb' }}
+                          onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+                          onBlur={e => (e.currentTarget.style.borderColor = errors.price ? '#e75462' : '#dbdadb')}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSuggestPrice}
+                          disabled={priceAiLoading}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded border transition-colors disabled:opacity-60"
+                          style={{ color: '#7c3aed', borderColor: '#ddd4fe', backgroundColor: '#f5f3ff' }}
+                        >
+                          {priceAiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                          {priceAiLoading ? '…' : 'Suggest'}
+                        </button>
+                      </div>
+                      {priceSuggestion && (priceSuggestion.min !== null || priceSuggestion.max !== null) && (
+                        <div className="mt-2 px-3 py-2 rounded-lg border text-xs" style={{ borderColor: '#ddd4fe', backgroundColor: '#fafafe' }}>
+                          <p className="font-semibold" style={{ color: '#7c3aed' }}>
+                            Suggested: £{priceSuggestion.min ?? '?'} – £{priceSuggestion.max ?? '?'}
+                          </p>
+                          {priceSuggestion.reasoning && <p className="text-gray-600 mt-0.5">{priceSuggestion.reasoning}</p>}
+                          <div className="flex gap-2 mt-1.5">
+                            {priceSuggestion.min !== null && (
+                              <button type="button" onClick={() => { setPrice(String(priceSuggestion.min)); setPriceSuggestion(null) }} className="text-xs font-semibold underline" style={{ color: '#7c3aed' }}>
+                                Use £{priceSuggestion.min}
+                              </button>
+                            )}
+                            {priceSuggestion.max !== null && (
+                              <button type="button" onClick={() => { setPrice(String(priceSuggestion.max)); setPriceSuggestion(null) }} className="text-xs font-semibold underline" style={{ color: '#7c3aed' }}>
+                                Use £{priceSuggestion.max}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Field>
+                  )}
+                </div>
+              )}
+
+              {/* Condition — hidden for Jobs, Property, Services, Pets, Community */}
+              {config.showCondition && config.conditionOptions.length > 0 && (
+                <Field label="Condition">
+                  <div className="flex flex-wrap gap-2">
+                    {config.conditionOptions.map(c => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setCondition(c.value)}
+                        className="px-4 py-2 text-sm rounded-full border font-medium transition-colors"
+                        style={
+                          condition === c.value
+                            ? { backgroundColor: '#0D475C', color: '#fff', borderColor: '#0D475C' }
+                            : { backgroundColor: '#fff', color: '#555', borderColor: '#dbdadb' }
+                        }
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
             </>
           )}
 
           {/* ── Step 1: Photos ── */}
           {step === 1 && (
             <div>
-              <p className="text-sm text-gray-500 mb-4">
-                Add up to 10 photos. First photo will be your main image.
-              </p>
+              <p className="text-sm text-gray-500 mb-4">Add up to 10 photos. First photo will be your main image.</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4">
                 {photos.map((url, idx) => (
                   <div key={url} className="relative aspect-square rounded-lg overflow-hidden border group" style={{ borderColor: '#dbdadb' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                     {idx === 0 && (
-                      <span className="absolute top-1 left-1 text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ backgroundColor: '#0D475C' }}>
-                        Main
-                      </span>
+                      <span className="absolute top-1 left-1 text-xs font-bold text-white px-1.5 py-0.5 rounded" style={{ backgroundColor: '#0D475C' }}>Main</span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(idx)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80"
-                      aria-label="Remove photo"
-                    >
+                    <button type="button" onClick={() => removePhoto(idx)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80" aria-label="Remove photo">
                       <X size={11} />
                     </button>
                     <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => movePhoto(idx, -1)}
-                        disabled={idx === 0}
-                        className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
-                        aria-label="Move photo left"
-                      >
+                      <button type="button" onClick={() => movePhoto(idx, -1)} disabled={idx === 0} className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80" aria-label="Move photo left">
                         <ChevronLeft size={13} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => movePhoto(idx, 1)}
-                        disabled={idx === photos.length - 1}
-                        className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
-                        aria-label="Move photo right"
-                      >
+                      <button type="button" onClick={() => movePhoto(idx, 1)} disabled={idx === photos.length - 1} className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-black/80" aria-label="Move photo right">
                         <ChevronRight size={13} />
                       </button>
                     </div>
                   </div>
                 ))}
-
                 {photos.length < 10 && (
                   <button
                     type="button"
@@ -525,22 +492,12 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
                     className="aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors disabled:opacity-60"
                     style={{ borderColor: '#dbdadb' }}
                   >
-                    {uploadingPhoto
-                      ? <Loader2 size={20} className="animate-spin" />
-                      : <Upload size={20} />
-                    }
+                    {uploadingPhoto ? <Loader2 size={20} className="animate-spin" /> : <Upload size={20} />}
                     <span className="text-xs">{uploadingPhoto ? 'Uploading…' : 'Add photo'}</span>
                   </button>
                 )}
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                className="hidden"
-                onChange={handlePhotoUpload}
-              />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handlePhotoUpload} />
               {errors.photos && <p className="text-xs text-red-500 mb-2">{errors.photos}</p>}
               {photos.length === 0 && (
                 <div
@@ -574,13 +531,15 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
 
               <div className="space-y-3">
                 <p className="text-sm font-semibold" style={{ color: '#0D475C' }}>Options</p>
-                <ToggleRow
-                  icon={<Truck size={15} />}
-                  label="Offers shipping"
-                  description="You're willing to ship this item to the buyer"
-                  checked={offersShipping}
-                  onChange={setOffersShipping}
-                />
+                {config.showShipping && (
+                  <ToggleRow
+                    icon={<Truck size={15} />}
+                    label="Offers shipping"
+                    description="You're willing to ship this item to the buyer"
+                    checked={offersShipping}
+                    onChange={setOffersShipping}
+                  />
+                )}
                 <ToggleRow
                   icon={<Zap size={15} />}
                   label="Mark as urgent"
@@ -600,17 +559,30 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
                 label="Category"
                 value={
                   subcategorySlug
-                    ? `${categoryName} › ${
-                        subcategories.find(s => s.slug === subcategorySlug)?.name ?? subcategorySlug
-                      }`
+                    ? `${categoryName} › ${subcategories.find(s => s.slug === subcategorySlug)?.name ?? subcategorySlug}`
                     : categoryName
                 }
               />
-              <ReviewRow label="Condition" value={CONDITIONS.find(c => c.value === condition)?.label ?? condition} />
-              <ReviewRow
-                label="Price"
-                value={priceType === 'free' ? 'Free' : priceType === 'negotiable' ? `£${price} (negotiable)` : `£${price}`}
-              />
+              {getAllAttributeFields(config).filter(f => attrs[f.key]).map(field => (
+                <ReviewRow key={field.key} label={field.label} value={attrs[field.key]} />
+              ))}
+              {config.showCondition && config.conditionOptions.length > 0 && (
+                <ReviewRow label="Condition" value={config.conditionOptions.find(c => c.value === condition)?.label ?? condition} />
+              )}
+              {config.showPrice && (
+                <ReviewRow
+                  label={config.priceLabel || 'Price'}
+                  value={
+                    !config.showPriceType
+                      ? `£${price}`
+                      : priceType === 'free'
+                        ? 'Free'
+                        : priceType === 'negotiable'
+                          ? `£${price} (negotiable)`
+                          : `£${price}`
+                  }
+                />
+              )}
               <ReviewRow label="Location" value={location} />
               <ReviewRow label="Description" value={description} multiline />
               {photos.length > 0 && (
@@ -624,12 +596,9 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
                   </div>
                 </div>
               )}
-              {offersShipping && <ReviewRow label="Shipping" value="Available" />}
+              {config.showShipping && offersShipping && <ReviewRow label="Shipping" value="Available" />}
               {isUrgent && <ReviewRow label="Urgent" value="Yes" />}
-
-              {errors.submit && (
-                <p className="text-sm text-red-500 text-center">{errors.submit}</p>
-              )}
+              {errors.submit && <p className="text-sm text-red-500 text-center">{errors.submit}</p>}
             </div>
           )}
         </div>
@@ -645,7 +614,6 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
             <ChevronLeft size={15} />
             {step === 0 ? 'Change category' : 'Back'}
           </button>
-
           {step < 3 ? (
             <button
               type="button"
@@ -653,8 +621,7 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
               className="flex items-center gap-1.5 px-6 py-2.5 rounded text-white text-sm font-bold transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#0D475C' }}
             >
-              Continue
-              <ChevronRight size={15} />
+              Continue <ChevronRight size={15} />
             </button>
           ) : (
             <button
@@ -674,7 +641,110 @@ export default function PostAdForm({ categorySlug, categoryName, subcategories }
   )
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function AttrFieldGroup({
+  fields,
+  attrs,
+  errors,
+  setAttr,
+}: {
+  fields: AttributeField[]
+  attrs: Record<string, string>
+  errors: Record<string, string>
+  setAttr: (key: string, value: string) => void
+}) {
+  const rows: AttributeField[][] = []
+  let i = 0
+  while (i < fields.length) {
+    if (
+      fields[i].type === 'select' &&
+      i + 1 < fields.length &&
+      fields[i + 1].type === 'select' &&
+      !fields[i].required &&
+      !fields[i + 1].required
+    ) {
+      rows.push([fields[i], fields[i + 1]])
+      i += 2
+    } else {
+      rows.push([fields[i]])
+      i++
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {rows.map((row, ri) => (
+        <div key={ri} className={row.length === 2 ? 'grid grid-cols-2 gap-4' : ''}>
+          {row.map(field => (
+            <AttrFieldInput
+              key={field.key}
+              field={field}
+              value={attrs[field.key] ?? ''}
+              onChange={v => setAttr(field.key, v)}
+              error={errors[`attr_${field.key}`]}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function AttrFieldInput({
+  field,
+  value,
+  onChange,
+  error,
+}: {
+  field: AttributeField
+  value: string
+  onChange: (v: string) => void
+  error?: string
+}) {
+  const borderColor = error ? '#e75462' : '#dbdadb'
+  const fieldLabel = (
+    <span>
+      {field.label}
+      {field.required && <span className="text-red-400 ml-0.5">*</span>}
+    </span>
+  )
+
+  if (field.type === 'select') {
+    return (
+      <Field label={fieldLabel} error={error}>
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none bg-white"
+          style={{ borderColor }}
+          onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+          onBlur={e => (e.currentTarget.style.borderColor = error ? '#e75462' : '#dbdadb')}
+        >
+          <option value="">Choose…</option>
+          {field.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      </Field>
+    )
+  }
+
+  return (
+    <Field label={fieldLabel} error={error}>
+      <input
+        type={field.type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={field.placeholder}
+        min={field.min}
+        max={field.max}
+        className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none"
+        style={{ borderColor }}
+        onFocus={e => (e.currentTarget.style.borderColor = '#0D475C')}
+        onBlur={e => (e.currentTarget.style.borderColor = error ? '#e75462' : '#dbdadb')}
+      />
+    </Field>
+  )
+}
+
+function Field({ label, error, children }: { label: React.ReactNode; error?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-semibold mb-1.5" style={{ color: '#0D475C' }}>{label}</label>

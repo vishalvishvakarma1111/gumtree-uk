@@ -104,15 +104,3 @@ Always use them only in API routes (server-side).
 6. **Error handling** — every async function must have try/catch, show user-friendly error messages
 7. **Loading states** — every data fetch must show a skeleton or spinner
 
----
-
-## Git Commit Style
-
-```
-feat: add listing detail page
-fix: correct image upload size limit
-chore: update Supabase types
-docs: add setup instructions to README
-```
-
-Keep commits small and focused. Commit after each working feature.

@@ -5,7 +5,7 @@ Replicates core gumtree.com UK functionality with integrated Claude features for
 description generation, title rewriting, price suggestion, and natural-language
 search parsing.
 
-> Live demo: _add Vercel URL once deployed_
+> Live demo: https://gumtree-uk.vercel.app/
 
 ---
 
@@ -139,9 +139,7 @@ supabase/migrations/ SQL migrations
 ## Deployment (Vercel)
 
 1. Connect the GitHub repository to Vercel.
-2. Add the four env vars from `.env.example` in Vercel project → Settings → Environment Variables.
-3. Push to `main` — Vercel auto-deploys.
-4. Update the live demo URL at the top of this README.
+2. Push to `main` — Vercel auto-deploys.
 
 ---
 
