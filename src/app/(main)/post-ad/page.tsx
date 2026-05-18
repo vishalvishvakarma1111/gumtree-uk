@@ -80,7 +80,7 @@ export default async function PostAdPage() {
 
         <p className="text-center text-xs text-gray-400 mt-6">
           By posting an ad you agree to our{' '}
-          <Link href="#" className="underline">Terms and Conditions</Link>
+          <Link href="/info/terms" className="underline">Terms and Conditions</Link>
         </p>
       </div>
     </div>

@@ -193,9 +193,9 @@ function LoginForm() {
 
       <p className="text-center text-xs text-gray-400 mt-4 px-4">
         By logging in you agree to our{' '}
-        <Link href="#" className="underline">Terms of Use</Link>
+        <Link href="/info/terms" className="underline">Terms of Use</Link>
         {' '}and{' '}
-        <Link href="#" className="underline">Privacy Policy</Link>.
+        <Link href="/info/privacy" className="underline">Privacy Policy</Link>.
       </p>
     </div>
   )

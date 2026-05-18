@@ -260,7 +260,7 @@ export default async function ListingDetailPage({
                   <p className="font-semibold text-gray-600 mb-1">Stay safe</p>
                   <p className="leading-relaxed">
                     Meet in a public place, never pay in advance, and don't share personal financial details.{' '}
-                    <Link href="#" className="hover:underline" style={{ color: '#0D475C' }}>
+                    <Link href="/info/safety" className="hover:underline" style={{ color: '#0D475C' }}>
                       Read our safety tips
                     </Link>
                   </p>
