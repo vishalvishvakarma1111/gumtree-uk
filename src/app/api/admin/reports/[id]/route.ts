@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isAdminUser } from '@/lib/admin'
+import { logAuditAction } from '@/lib/audit'
 import { sendEmail, reportResolvedEmail } from '@/lib/email'
 
 export async function PATCH(
@@ -55,6 +56,14 @@ export async function PATCH(
       listingTitle: report.listing?.title ?? 'a listing',
       outcome: action === 'dismiss' ? 'dismissed' : 'resolved',
     }).catch(err => console.error('notifyReporter failed:', err))
+
+    await logAuditAction({
+      actorId: user.id,
+      action: action === 'dismiss' ? 'report.dismiss' : 'report.resolve',
+      entityType: 'report',
+      entityId: id,
+      meta: { action, listing_id: report.listing_id },
+    }, admin)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

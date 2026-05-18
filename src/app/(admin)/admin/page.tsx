@@ -52,7 +52,7 @@ export default async function AdminDashboard() {
         <StatCard label="Pending review" value={pendingCount ?? 0} href="/admin/listings" Icon={FileCheck} accent="#a16207" />
         <StatCard label="Open reports"   value={openReportsCount ?? 0} href="/admin/reports" Icon={Flag} accent="#b91c1c" />
         <StatCard label="Active ads"     value={activeCount ?? 0}  href="/admin/listings?status=active" Icon={ShoppingBag} accent="#15803d" />
-        <StatCard label="Users"          value={usersCount ?? 0}   href="/admin"             Icon={Users} accent="#0D475C" />
+        <StatCard label="Users"          value={usersCount ?? 0}   href="/admin/users"       Icon={Users} accent="#0D475C" />
       </div>
 
       <div className="bg-white rounded-xl border mt-6 p-5" style={{ borderColor: '#dbdadb' }}>

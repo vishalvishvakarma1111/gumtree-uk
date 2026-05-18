@@ -4,7 +4,8 @@
       "Bash(python3 -c ' *)",
       "Bash(python3 -m pip install python-docx)",
       "WebFetch(domain:www.gumtree.com)",
-      "Bash(curl -s https://www.gumtree.com/)"
+      "Bash(curl -s https://www.gumtree.com/)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

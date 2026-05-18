@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+import { scanBannedWords } from '@/lib/banned-words'
 
 const ALLOWED_SORTS: Record<string, { column: string; ascending: boolean }> = {
   newest: { column: 'created_at', ascending: false },
@@ -81,6 +83,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title, category, and location are required' }, { status: 400 })
     }
 
+    const adminClient = createServiceClient()
+    const { data: profile } = await adminClient
+      .from('user_profiles')
+      .select('banned_until')
+      .eq('id', user.id)
+      .maybeSingle<{ banned_until: string | null }>()
+    if (profile?.banned_until && new Date(profile.banned_until).getTime() > Date.now()) {
+      return NextResponse.json({
+        error: 'Your account is currently suspended. You cannot post new listings.',
+      }, { status: 403 })
+    }
+
+    const hits = await scanBannedWords(adminClient, [title, description])
+    const blockHit = hits.find(h => h.severity === 'block')
+    if (blockHit) {
+      return NextResponse.json({
+        error: `Your listing contains a banned word ("${blockHit.word}"). Please revise and try again.`,
+      }, { status: 400 })
+    }
     let resolvedCategoryId = category_id
     const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(category_id)
     if (!looksLikeUuid) {

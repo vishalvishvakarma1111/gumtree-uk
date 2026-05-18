@@ -1,14 +1,18 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, FileCheck, Flag } from 'lucide-react'
+import { LayoutDashboard, FileCheck, Flag, Users, FolderTree, ShieldAlert, ScrollText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { isAdminUser } from '@/lib/admin'
 import AdminSignOut from './admin-signout'
 
 const NAV = [
-  { label: 'Dashboard',          href: '/admin',          Icon: LayoutDashboard },
-  { label: 'Pending listings',   href: '/admin/listings', Icon: FileCheck },
-  { label: 'Reports',            href: '/admin/reports',  Icon: Flag },
+  { label: 'Dashboard',          href: '/admin',              Icon: LayoutDashboard },
+  { label: 'Pending listings',   href: '/admin/listings',     Icon: FileCheck },
+  { label: 'Reports',            href: '/admin/reports',      Icon: Flag },
+  { label: 'Users',              href: '/admin/users',        Icon: Users },
+  { label: 'Categories',         href: '/admin/categories',   Icon: FolderTree },
+  { label: 'Banned words',       href: '/admin/banned-words', Icon: ShieldAlert },
+  { label: 'Audit log',          href: '/admin/audit',        Icon: ScrollText },
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

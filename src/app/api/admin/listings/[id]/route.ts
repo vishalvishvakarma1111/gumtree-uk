@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { isAdminUser } from '@/lib/admin'
+import { logAuditAction } from '@/lib/audit'
 import { sendEmail, listingApprovedEmail, listingRejectedEmail } from '@/lib/email'
 
 const ALLOWED_STATUSES = ['active', 'pending', 'rejected', 'expired', 'sold', 'draft']
@@ -53,6 +54,16 @@ export async function PATCH(
     if (updated && (updated.status === 'active' || updated.status === 'rejected')) {
       notifyOwner(updated).catch(err => console.error('notifyOwner failed:', err))
     }
+
+    await logAuditAction({
+      actorId: user.id,
+      action: update.status === 'active' ? 'listing.approve'
+            : update.status === 'rejected' ? 'listing.reject'
+            : 'listing.update',
+      entityType: 'listing',
+      entityId: id,
+      meta: update,
+    }, admin)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

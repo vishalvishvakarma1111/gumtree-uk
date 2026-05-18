@@ -55,7 +55,8 @@ export async function updateSession(request: NextRequest) {
 
   // Logged-in admin visiting any non-admin HTML route → bounce to /admin.
   // API routes pass through so admin pages can still call backend endpoints.
-  if (user && !isApiRoute && await isAdminUser(supabase, user.id)) {
+  // /reset-password is exempt so admins can complete a password recovery flow.
+  if (user && !isApiRoute && path !== '/reset-password' && await isAdminUser(supabase, user.id)) {
     const redirect = request.nextUrl.clone()
     redirect.pathname = '/admin'
     redirect.search = ''

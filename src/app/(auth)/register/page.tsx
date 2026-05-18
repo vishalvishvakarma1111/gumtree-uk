@@ -122,14 +122,6 @@ function RegisterForm() {
             <span className="font-bold text-base" style={{ color: '#4285F4' }}>G</span>
             {oauthLoading ? 'Redirecting…' : 'Continue with Google'}
           </button>
-          <button
-            type="button"
-            className="w-full flex items-center justify-center gap-3 border py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            style={{ borderColor: '#dbdadb' }}
-          >
-            <span className="font-bold text-base" style={{ color: '#1877F2' }}>f</span>
-            Continue with Facebook
-          </button>
         </div>
 
         <div className="flex items-center gap-3 mb-5">
