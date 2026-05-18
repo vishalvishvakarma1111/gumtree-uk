@@ -126,8 +126,9 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
   }, [])
 
   // Realtime unread badge — refetch count on any message INSERT/UPDATE.
+  const userId = user?.id
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
     const supabase = createClient()
 
     async function refresh() {
@@ -142,23 +143,27 @@ export default function Header({ user, unreadMessages = 0 }: HeaderProps) {
     }
 
     const channel = supabase
-      .channel(`unread:${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, refresh)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, refresh)
+      .channel(`unread:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, refresh)
       .subscribe()
 
     function onVisible() {
       if (document.visibilityState === 'visible') refresh()
     }
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refresh)
     window.addEventListener('unread-changed', refresh)
+    const pollId = window.setInterval(refresh, 60_000)
 
     return () => {
       supabase.removeChannel(channel)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refresh)
       window.removeEventListener('unread-changed', refresh)
+      window.clearInterval(pollId)
     }
-  }, [user])
+  }, [userId])
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
